@@ -1,5 +1,6 @@
 add_library(pbf STATIC
-  PositionBasedFluids.cpp
+  pbf_kernels.cpp
+  sph_kernels.cpp
 )
 
 

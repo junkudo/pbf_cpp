@@ -2,13 +2,14 @@
 
 #include <cmath>
 
+namespace pbf {
 struct vec2f
 {
     float x;
     float y;
 
     // --- constructors ---
-    constexpr vec2f() {}
+    vec2f() {}
     constexpr vec2f(float x_, float y_) : x(x_), y(y_) {}
 
     // --- basic arithmetic ---
@@ -89,4 +90,17 @@ struct vec2f
 constexpr vec2f operator*(float s, const vec2f& v)
 {
     return v * s;
+}
+
+template<int Dim>
+struct VecForDim; // primary template (undefined)
+
+template<>
+struct VecForDim<2>
+{
+    using type = vec2f;
+};
+
+template<int Dim>
+using Vec = typename VecForDim<Dim>::type;
 }

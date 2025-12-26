@@ -6,7 +6,7 @@ add_library(pbf STATIC
 
 target_include_directories(pbf
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # Warnings

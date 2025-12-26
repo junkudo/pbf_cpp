@@ -12,7 +12,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(pbf_tests
-    PositionBasedFluids_tests.cpp
+    sph_kernels_tests.cpp
 )
 
 target_link_libraries(pbf_tests

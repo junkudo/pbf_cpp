@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <cassert>
 
 namespace pbf {
 struct vec2f
@@ -11,6 +12,16 @@ struct vec2f
     // --- constructors ---
     vec2f() {}
     constexpr vec2f(float x_, float y_) : x(x_), y(y_) {}
+
+    float& operator[](int i) {    
+        assert(i == 0 || i == 1);
+        return (&x)[i];
+    }
+
+    const float& operator[](int i) const {
+        assert(i == 0 || i == 1);
+        return (&x)[i];
+    }
 
     // --- basic arithmetic ---
     constexpr vec2f operator+(const vec2f& o) const

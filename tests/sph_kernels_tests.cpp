@@ -39,6 +39,39 @@ TEST(sph_kernels, normalization)
 }
 
 template <typename SPHKernel>
+void testSPHKernelConsistencyAtZero(std::string const & implName, float h) {
+SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
+    // We expect the sph kernels to evaluate consistently at zero
+    float r = 0.0f;
+    pbf::vec2f unitVec = pbf::vec2f(1.0f, 0.0f);
+    float f = SPHKernel::eval(unitVec*r, h);
+    float fAtZero = SPHKernel::evalAtZero(h);
+    float tolerance = 1.0e-3f;
+    EXPECT_NEAR(f, fAtZero, tolerance);
+}
+
+
+TEST(sph_kernels, poly6_at_zero)
+{
+    float h = 3.2f;
+    testSPHKernelConsistencyAtZero<pbf::sph::Poly6<2>>("Poly6", h);
+    float fAtZero = pbf::sph::Poly6<2>::evalAtZero(h);
+    float tolerance = 1.0e-3f;
+    float f =  4.0f / (std::numbers::pi_v<float> * std::pow(h, 8)) * std::pow(h, 6);
+    EXPECT_NEAR(f, fAtZero, tolerance);
+}
+
+TEST(sph_kernels, spikey_at_zero)
+{
+    float h = 3.2f;
+    testSPHKernelConsistencyAtZero<pbf::sph::Spikey<2>>("Spikey", h);
+    float fAtZero = pbf::sph::Spikey<2>::evalAtZero(h);
+    float tolerance = 1.0e-3f;
+    float f =  10.0f / (std::numbers::pi_v<float> * std::pow(h, 5)) * std::pow(h, 3);
+    EXPECT_NEAR(f, fAtZero, tolerance);
+}
+
+template <typename SPHKernel>
 void testSPHKernelFiniteDifference(std::string const & implName) {
 SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     // We expect the gradients of the kernels to be consistent

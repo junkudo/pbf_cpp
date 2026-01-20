@@ -13,6 +13,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(pbf_tests
     sph_kernels_tests.cpp
+    pbf_kernels_tests.cpp
 )
 
 target_link_libraries(pbf_tests

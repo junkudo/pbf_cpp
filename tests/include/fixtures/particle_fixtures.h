@@ -5,33 +5,11 @@
 #include "pbf/sph_kernels.h"
 #include "pbf/pbf_kernels.h"
 #include "pbf/vec2f.h"
+#include "test_helpers.h"
 
 namespace testing {
 
     static std::mt19937 rng(0);
-
-    template <class URBG>
-    std::vector<pbf::vec2f>
-    jittered_grid(int nx, int ny, float dx, float jitter, URBG& rng)
-    {
-        std::uniform_real_distribution<float> uni(0.0f, 1.0f);
-
-        std::vector<pbf::vec2f> pos;
-        pos.reserve(nx * ny);
-
-        for (int j = 0; j < ny; ++j)
-        {
-            for (int i = 0; i < nx; ++i)
-            {
-                pbf::vec2f p{i * dx, j * dx};
-                p.x += (uni(rng) - 0.5f) * dx * jitter;
-                p.y += (uni(rng) - 0.5f) * dx * jitter;
-                pos.push_back(p);
-            }
-        }
-
-        return pos;
-    }
 
     // Note - this thing is not designed to be able to inject a rng.
     // I'm too lazy to do that so im just going to use a global static

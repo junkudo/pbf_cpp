@@ -4,26 +4,10 @@
 #include "pbf/sph_kernels.h"
 #include "pbf/vec2f.h"
 #include "fixtures/particle_fixtures.h"
+#include "fixtures/test_helpers.h"
 
 namespace {
     constexpr float pi = std::numbers::pi_v<float>;
-
-    // Brute force returns all neighbors around particle self_index closer than h
-    // This does not return self-adjacency
-    std::vector<int> get_neighbors_slow(int self_index, std::vector<pbf::vec2f> const & positions, float h) {
-        std::vector<int> neighbors;
-        pbf::vec2f position_i = positions.at(self_index);
-        for (int j = 0; j < positions.size(); ++j) {
-            if (self_index == j)
-                continue;
-            pbf::vec2f position_j = positions.at(j);
-            pbf::vec2f diff = position_i - position_j;
-            float distance = diff.length();
-            if (distance <= h)
-                neighbors.push_back(j);
-        }
-        return neighbors;
-    }
 }
 
 template <typename SPHKernel>
@@ -208,7 +192,7 @@ TEST_F(DensityGridFixture, density_geometric_invariants) {
     std::vector<float> densities(nparticles);
     float mass = 1.2f;
     for (int i = 0; i < nparticles; ++i) {
-        std::vector<int> neighbors = get_neighbors_slow(i, positions, h);
+        std::vector<int> neighbors = testing::get_neighbors_slow(i, positions, h);
         float density = pbf::sph::computeDensity<2, Kernel>(i,  mass, h, neighbors, positions);
         densities.at(i) = density;
     }
@@ -223,7 +207,7 @@ TEST_F(DensityGridFixture, density_geometric_invariants) {
     }
 
     for (int i = 0; i < nparticles; ++i) {
-        std::vector<int> neighbors = get_neighbors_slow(i, new_positions, h);
+        std::vector<int> neighbors = testing::get_neighbors_slow(i, new_positions, h);
         float density = pbf::sph::computeDensity<2, Kernel>(i, mass, h, neighbors, new_positions);
         float tol = 1.0e-4f;
         EXPECT_NEAR(density, densities.at(i), tol);
@@ -245,7 +229,7 @@ TEST_F(DensityGridFixture, density_geometric_invariants) {
         p.y = y_new;
     }
     for (int i = 0; i < nparticles; ++i) {
-        std::vector<int> neighbors = get_neighbors_slow(i, rotated_positions, h);
+        std::vector<int> neighbors = testing::get_neighbors_slow(i, rotated_positions, h);
         float density = pbf::sph::computeDensity<2, Kernel>(i, mass, h, neighbors, rotated_positions);
         float tol = 1.0e-4f;
         EXPECT_NEAR(density, densities.at(i), tol);

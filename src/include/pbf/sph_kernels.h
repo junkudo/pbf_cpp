@@ -25,8 +25,9 @@ namespace pbf::sph {
     };
 
     template <int Dim, typename Kernel>
-    float computeDensity(int self_index, std::vector<int> const & neighbors,
-                         std::vector<Vec<Dim>> const & positions, float mass, float h);
+    float computeDensity(int self_index, float mass, float h,
+        std::vector<int> const & neighbors,
+        std::vector<Vec<Dim>> const & positions);
 }
 
 #include "pbf/sph_kernels.inl"

@@ -6,4 +6,14 @@ namespace pbf::sph {
             float density = pbf::sph::computeDensity<Dim, Kernel>(self_index, mass, h, neighbors, positions);
             return density / rest_density - 1.0f;
         }
+
+    template <int Dim, typename Kernel>
+    void computeDensityConstraintGradients(int self_index,
+        float rest_density, float mass,float h,
+        std::vector<int> const& neighbors,
+        std::vector<Vec<Dim>> const& positions,
+        std::vector<Vec<Dim>>& out_gradients) {
+            out_gradients.resize(neighbors.size() + 1);
+
+    }
 }

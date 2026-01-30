@@ -39,4 +39,44 @@ namespace pbf::sph {
                 out_gradients[0] += (mass / rest_density) * gradW;
             }
     }
+
+    template <int Dim, typename ConstraintKernel, typename GradientKernel>
+    float computeLambda(int self_index,
+        float rest_density,
+        float mass,
+        float h,
+        float epsilon,
+        std::vector<int> const& neighbors,
+        std::vector<Vec<Dim>> const& positions) {
+            // Compute density constraint C_i using constraint kernel
+            float constraint = computeDensityConstraint<Dim, ConstraintKernel>(
+                self_index, rest_density, mass, h, neighbors, positions);
+
+            // Compute constraint gradients using gradient kernel
+            std::vector<Vec<Dim>> gradients;
+            computeDensityConstraintGradients<Dim, GradientKernel>(
+                self_index, rest_density, mass, h, neighbors, positions, gradients);
+
+            // Compute sum of squared gradient magnitudes
+            float sum_grad_sq = 0.0f;
+            for (const auto& grad : gradients) {
+                sum_grad_sq += grad.dot(grad);
+            }
+
+            // Compute lambda using the formula: λ = -C / (Σ|∇C|² + ε)
+            return -constraint / (sum_grad_sq + epsilon);
+    }
+
+    // Backward compatibility overload using same kernel for both
+    template <int Dim, typename Kernel>
+    float computeLambda(int self_index,
+        float rest_density,
+        float mass,
+        float h,
+        float epsilon,
+        std::vector<int> const& neighbors,
+        std::vector<Vec<Dim>> const& positions) {
+            return computeLambda<Dim, Kernel, Kernel>(
+                self_index, rest_density, mass, h, epsilon, neighbors, positions);
+    }
 }

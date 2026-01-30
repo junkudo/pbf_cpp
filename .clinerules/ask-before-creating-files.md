@@ -2,7 +2,8 @@
 This rule establishes guidelines for seeking user approval before creating new files or deleting existing files in the PBF project. This ensures collaborative development and prevents unwanted changes to the codebase.
 
 ## File creation protocol
-- Always ask the user for approval before creating new files
+- **NEVER create new files. ONLY edit existing files.**
+- If you cannot complete a task without creating a new file, STOP and ask for permission
 - Use the ask_followup_question tool to request permission
 - Provide clear justification for why the new file is needed
 - Include the proposed filename and location in the request

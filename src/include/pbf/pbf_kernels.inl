@@ -67,16 +67,40 @@ namespace pbf::sph {
             return -constraint / (sum_grad_sq + epsilon);
     }
 
-    // Backward compatibility overload using same kernel for both
-    template <int Dim, typename Kernel>
-    float computeLambda(int self_index,
+    template <int Dim, typename GradientKernel>
+    void calculatePositionCorrection(
+        int self_index,
         float rest_density,
         float mass,
         float h,
-        float epsilon,
         std::vector<int> const& neighbors,
-        std::vector<Vec<Dim>> const& positions) {
-            return computeLambda<Dim, Kernel, Kernel>(
-                self_index, rest_density, mass, h, epsilon, neighbors, positions);
+        std::vector<float> const& lambdas,
+        std::vector<Vec<Dim>> const& positions,
+        Vec<Dim>& out_correction) {
+            // Initialize correction to zero
+            out_correction = Vec<Dim>(0.0f, 0.0f);
+
+            // Get self position
+            Vec<Dim> const& pi = positions[self_index];
+            float lambda_i = lambdas[self_index];
+
+            // Calculate position correction for each neighbor
+            for (size_t k = 0; k < neighbors.size(); ++k) {
+                int neighbor_index = neighbors[k];
+
+                Vec<Dim> const& pj = positions[neighbor_index];
+                float lambda_j = lambdas[neighbor_index];
+
+                // Compute displacement vector from self to neighbor
+                Vec<Dim> r_vec = pi - pj;
+
+                // Compute kernel gradient using template parameter
+                Vec<Dim> gradW = GradientKernel::deriv(r_vec, h);
+
+                // Calculate position correction contribution:
+                // (m/ρ₀) * (λ_i + λ_j) * ∇W(r_i - r_j, h)
+                float correction_factor = (mass / rest_density) * (lambda_i + lambda_j);
+                out_correction += correction_factor * gradW;
+            }
     }
 }

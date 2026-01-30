@@ -106,85 +106,6 @@ TEST_F(DensityGridFixture, constraint_gradient) {
     }
 }
 
-TEST_F(DensityGridFixture, lambda_computation) {
-    using Kernel = pbf::sph::Spikey<2>;  // Use Spikey kernel for lambda computation
-
-    float mass = 1.2f;
-    float rest_density = 0.95f;
-    float epsilon = 1.0e-6f;
-
-    // Get neighbors for particle 0
-    std::vector<int> neighbors = testing::get_neighbors_slow(0, positions, h);
-
-    // Compute lambda directly
-    float lambda = pbf::sph::computeLambda<2, Kernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
-
-    // Basic validation - lambda should be finite
-    EXPECT_TRUE(std::isfinite(lambda));
-
-    // Self-consistency check: verify lambda formula λ = -C / (Σ|∇C|² + ε)
-    float constraint = pbf::sph::computeDensityConstraint<2, Kernel>(
-        0, rest_density, mass, h, neighbors, positions);
-
-    std::vector<vec2f> gradients;
-    pbf::sph::computeDensityConstraintGradients<2, Kernel>(
-        0, rest_density, mass, h, neighbors, positions, gradients);
-
-    float sum_grad_sq = 0.0f;
-    for (const auto& grad : gradients) {
-        sum_grad_sq += grad.dot(grad);
-    }
-    float expected_lambda = -constraint / (sum_grad_sq + epsilon);
-
-    // Validate that computed lambda matches expected value
-    EXPECT_NEAR(lambda, expected_lambda, 1.0e-4f);
-
-    // Additional validation: lambda should have reasonable magnitude
-    // For typical SPH parameters, lambda should not be extremely large or small
-    EXPECT_GT(std::abs(lambda), 1.0e-10f);
-    EXPECT_LT(std::abs(lambda), 1.0e6f);
-}
-
-TEST_F(DensityGridFixture, lambda_computation_edge_cases) {
-    using Kernel = pbf::sph::Spikey<2>;
-
-    float mass = 1.2f;
-    float rest_density = 0.95f;
-    float epsilon = 1.0e-6f;
-
-    // Test with different epsilon values to ensure numerical stability
-    std::vector<float> epsilons = {1.0e-10f, 1.0e-6f, 1.0e-3f, 0.0f};
-
-    for (float test_epsilon : epsilons) {
-        std::vector<int> neighbors = testing::get_neighbors_slow(0, positions, h);
-
-        float lambda = pbf::sph::computeLambda<2, Kernel>(
-            0, rest_density, mass, h, test_epsilon, neighbors, positions);
-
-        // Lambda should always be finite regardless of epsilon value
-        EXPECT_TRUE(std::isfinite(lambda));
-
-        // For very small epsilon, lambda should still be reasonable
-        if (test_epsilon == 0.0f) {
-            // When epsilon is zero, we should still get a finite result
-            // due to the sum of squared gradients being positive
-            EXPECT_TRUE(std::isfinite(lambda));
-        }
-    }
-
-    // Test with a particle that has fewer neighbors (boundary case)
-    // Find a corner particle that might have fewer neighbors
-    int corner_particle = 0;  // First particle in grid is typically a corner
-    std::vector<int> corner_neighbors = testing::get_neighbors_slow(corner_particle, positions, h);
-
-    float corner_lambda = pbf::sph::computeLambda<2, Kernel>(
-        corner_particle, rest_density, mass, h, epsilon, corner_neighbors, positions);
-
-    EXPECT_TRUE(std::isfinite(corner_lambda));
-    EXPECT_GT(std::abs(corner_lambda), 0.0f);  // Should not be exactly zero
-}
-
 TEST_F(DensityGridFixture, lambda_computation_different_kernels) {
     using ConstraintKernel = pbf::sph::Poly6<2>;  // Same as Python constraint calculation
     using GradientKernel = pbf::sph::Spikey<2>;   // Same as Python gradient calculation
@@ -203,13 +124,6 @@ TEST_F(DensityGridFixture, lambda_computation_different_kernels) {
     // Basic validation - lambda should be finite
     EXPECT_TRUE(std::isfinite(lambda));
 
-    // Compare with single-kernel version to ensure consistency
-    float lambda_same_kernel = pbf::sph::computeLambda<2, GradientKernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
-
-    // They should be different since we're using different kernels
-    EXPECT_NE(lambda, lambda_same_kernel);
-
     // Validate mathematical correctness for the mixed-kernel version
     float constraint = pbf::sph::computeDensityConstraint<2, ConstraintKernel>(
         0, rest_density, mass, h, neighbors, positions);
@@ -226,4 +140,71 @@ TEST_F(DensityGridFixture, lambda_computation_different_kernels) {
 
     // Validate that computed lambda matches expected value
     EXPECT_NEAR(lambda, expected_lambda, 1.0e-4f);
+}
+
+TEST_F(DensityGridFixture, position_correction_matrix_vector_test) {
+    using Kernel = pbf::sph::Spikey<2>;  // Same kernel as Python position correction
+
+    float mass = 1.2f;
+    float rest_density = 0.95f;
+    float epsilon = 1.0e-6f;
+
+    // Generate random lambda values for testing
+    std::vector<float> lambdas(nparticles);
+    std::random_device rd;
+    std::mt19937 gen(42);  // Fixed seed for reproducible tests
+    std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+
+    for (int i = 0; i < nparticles; ++i) {
+        lambdas[i] = dis(gen);
+    }
+
+    // Construct full gradient matrix: gradc[num_particles * dim][num_particles]
+    std::vector<std::vector<float>> gradc(nparticles * 2, std::vector<float>(nparticles, 0.0f));
+
+    // Fill gradient matrix using existing constraint gradient function
+    for (int i = 0; i < nparticles; ++i) {
+        std::vector<int> neighbors = testing::get_neighbors_slow(i, positions, h);
+        std::vector<vec2f> gradients;
+        pbf::sph::computeDensityConstraintGradients<2, Kernel>(
+            i, rest_density, mass, h, neighbors, positions, gradients);
+
+        // Fill the i-th column of gradc matrix
+        // gradients[0] is the self-gradient (grad_i C_i)
+        // gradients[k+1] is the gradient w.r.t. neighbor k (grad_j C_i)
+
+        // Add self-gradient (gradient of constraint i w.r.t. particle i)
+        gradc[i * 2][i] = gradients[0].x;     // x-component
+        gradc[i * 2 + 1][i] = gradients[0].y; // y-component
+
+        // Add neighbor gradients
+        for (size_t k = 0; k < neighbors.size(); ++k) {
+            int neighbor_index = neighbors[k];
+            // Fill the neighbor's position rows in column i
+            gradc[neighbor_index * 2][i] = gradients[k + 1].x;     // x-component
+            gradc[neighbor_index * 2 + 1][i] = gradients[k + 1].y; // y-component
+        }
+    }
+
+    // Compute position corrections via matrix-vector product
+    std::vector<vec2f> deltap(nparticles);
+    for (int i = 0; i < nparticles; ++i) {
+        float sum_x = 0.0f, sum_y = 0.0f;
+        for (int j = 0; j < nparticles; ++j) {
+            sum_x += gradc[i * 2][j] * lambdas[j];
+            sum_y += gradc[i * 2 + 1][j] * lambdas[j];
+        }
+        deltap[i] = vec2f(sum_x, sum_y);
+    }
+
+    // Compare with calculatePositionCorrection for each particle
+    for (int i = 0; i < nparticles; ++i) {
+        std::vector<int> neighbors = testing::get_neighbors_slow(i, positions, h);
+        vec2f correction;
+        pbf::sph::calculatePositionCorrection<2, Kernel>(
+            i, rest_density, mass, h, neighbors, lambdas, positions, correction);
+
+        EXPECT_NEAR(correction.x, deltap[i].x, 1.0e-4f) << "Particle " << i;
+        EXPECT_NEAR(correction.y, deltap[i].y, 1.0e-4f) << "Particle " << i;
+    }
 }

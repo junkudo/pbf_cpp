@@ -25,6 +25,7 @@ target_include_directories(test_utils
 add_executable(pbf_tests
     sph_kernels_tests.cpp
     pbf_kernels_tests.cpp
+    spatial_hash_tests.cpp
 )
 
 

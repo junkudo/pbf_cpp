@@ -9,6 +9,8 @@
 #include "pbf/spatial_hash.h"
 #include "pbf/sph_kernels.h"
 #include "pbf/vec2f.h"
+#include "pbf/visualization.h"
+#include "raylib.h"
 
 using namespace pbf;
 
@@ -103,12 +105,65 @@ std::vector<vec2f> solveConstraints(const std::vector<vec2f>& predicted_position
     return corrections;
 }
 
+void runSimulationStep(ParticleSystem& system, SpatialHash& spatial_hash) {
+    // 1. Update velocities from gravity
+    system.updateVelocityFromGravity();
+
+    // 2. Predict positions
+    auto predicted_positions = system.predictPositions();
+
+    // 3. Build spatial hash with predicted positions
+    spatial_hash.update(predicted_positions);
+
+    // 4. Find neighbors for each particle
+    auto neighbors = spatial_hash.getAllNeighbors();
+
+    // 5. Solve constraints (50 iterations)
+    std::vector<vec2f> total_corrections(system.getNumParticles(), vec2f(0.0f, 0.0f));
+    std::vector<float> lambdas(system.getNumParticles(), 0.0f);
+
+    for (int iter = 0; iter < NUM_ITERATIONS; ++iter) {
+        // Calculate lambdas
+        for (int i = 0; i < system.getNumParticles(); ++i) {
+            lambdas[i] = calculateLambda(i, neighbors[i], predicted_positions);
+        }
+
+        auto corrections = solveConstraints(predicted_positions, neighbors, lambdas);
+
+        // Apply under-relaxation
+        for (int i = 0; i < system.getNumParticles(); ++i) {
+            total_corrections[i] += POSITION_CORRECTION_FACTOR * corrections[i];
+            predicted_positions[i] += POSITION_CORRECTION_FACTOR * corrections[i];
+        }
+    }
+
+    // 6. Update velocities from position corrections
+    // 7. Update positions to final positions
+    system.updatePositions(total_corrections);
+}
+
+
 int main() {
-    std::cout << "PBF Fluid Simulation" << std::endl;
+    std::cout << "PBF Fluid Simulation with Visualization" << std::endl;
     std::cout << "Particles: " << (10 * 10) << std::endl;
     std::cout << "Kernel radius: " << KERNEL_RADIUS << std::endl;
     std::cout << "Time step: " << TIME_STEP << std::endl;
     std::cout << "Solver iterations: " << NUM_ITERATIONS << std::endl;
+
+    // Create visualization configuration
+    pbf::visualization::VisualizationConfig config;
+    config.screenWidth = 800;
+    config.screenHeight = 600;
+    config.scale = 4000.0f;
+    config.offsetX = 100.0f;   // Move origin 100 pixels from left edge
+    config.offsetY = 500.0f;   // Move origin 500 pixels from top (closer to bottom)
+    config.particleRadius = 3.0f;
+    config.originDotRadius = 3.0f;
+    config.labelFontSize = 10;
+    config.timeFontSize = 20;
+
+    // Initialize raylib
+    InitWindow(config.screenWidth, config.screenHeight, "PBF Fluid Simulation");
 
     ParticleSystem system(10, 10);
 
@@ -116,57 +171,30 @@ int main() {
     float domain_size = 10.0f * PARTICLE_SPACING;
     SpatialHash spatial_hash(-domain_size, -domain_size, domain_size, domain_size, KERNEL_RADIUS);
 
-    for (int step = 0; step < 100; ++step) {
-        std::cout << "Step " << step << std::endl;
+    float simulationTime = 0.0f;  // Add time tracking
 
-        // 1. Update velocities from gravity
-        system.updateVelocityFromGravity();
+    // Simple simulation + display loop
+    while (!WindowShouldClose()) {
+        // Run one simulation step
+        runSimulationStep(system, spatial_hash);
+        simulationTime += TIME_STEP;  // Update simulation time
 
-        // 2. Predict positions
-        auto predicted_positions = system.predictPositions();
+        // Display immediately after simulation
+        BeginDrawing();
+        ClearBackground(BLACK);
 
-        // 3. Build spatial hash with predicted positions
-        spatial_hash.update(predicted_positions);
+        // Draw origin visualization
+        pbf::visualization::drawOrigin(config);
 
-        // 4. Find neighbors for each particle
-        auto neighbors = spatial_hash.getAllNeighbors();
+        // Draw particles and their influence circles
+        pbf::visualization::drawParticles(system.getPositions(), KERNEL_RADIUS, config);
 
-        // 5. Solve constraints (50 iterations)
-        std::vector<vec2f> total_corrections(system.getNumParticles(), vec2f(0.0f, 0.0f));
-        std::vector<float> lambdas(system.getNumParticles(), 0.0f);
+        // Draw time display
+        pbf::visualization::drawTime(simulationTime, config);
 
-        for (int iter = 0; iter < NUM_ITERATIONS; ++iter) {
-            // Calculate lambdas
-            for (int i = 0; i < system.getNumParticles(); ++i) {
-                lambdas[i] = calculateLambda(i, neighbors[i], predicted_positions);
-            }
-
-            auto corrections = solveConstraints(predicted_positions, neighbors, lambdas);
-
-            // Apply under-relaxation
-            for (int i = 0; i < system.getNumParticles(); ++i) {
-                total_corrections[i] += POSITION_CORRECTION_FACTOR * corrections[i];
-                predicted_positions[i] += POSITION_CORRECTION_FACTOR * corrections[i];
-            }
-        }
-
-        // 6. Update velocities from position corrections
-        // 7. Update positions to final positions
-        system.updatePositions(total_corrections);
-
-        // Print some debug info
-        if (step % 10 == 0) {
-            auto& positions = system.getPositions();
-            float min_y = positions[0].y;
-            float max_y = positions[0].y;
-            for (const auto& pos : positions) {
-                min_y = std::min(min_y, pos.y);
-                max_y = std::max(max_y, pos.y);
-            }
-            std::cout << "  Y range: " << min_y << " to " << max_y << std::endl;
-        }
+        EndDrawing();
     }
 
-    std::cout << "Simulation complete!" << std::endl;
+    CloseWindow();
     return 0;
 }

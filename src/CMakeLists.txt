@@ -2,12 +2,14 @@ add_library(pbf STATIC
   pbf_kernels.cpp
   sph_kernels.cpp
   spatial_hash.cpp
+  visualization.cpp
 )
 
 
 target_include_directories(pbf
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../external/raylib/src
 )
 
 # Warnings
@@ -25,4 +27,5 @@ add_executable(pbf_app
 
 target_link_libraries(pbf_app
     PRIVATE pbf
+    PRIVATE raylib
 )

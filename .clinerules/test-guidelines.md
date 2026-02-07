@@ -25,6 +25,10 @@ This rule establishes guidelines for writing comprehensive tests for new interfa
 - Use appropriate assertion macros (EXPECT_EQ, ASSERT_TRUE, etc.)
 - Implement custom matchers for complex validation when needed
 
+## Running tests after changes
+- After making code or test changes, run the relevant test suite before marking the task complete
+- Prefer `ctest --test-dir build --output-on-failure` unless a narrower test target is more appropriate
+
 ## Performance considerations
 - Include performance benchmarks for critical algorithms
 - Test with realistic data sizes and scenarios

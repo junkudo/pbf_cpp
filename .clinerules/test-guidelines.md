@@ -27,6 +27,7 @@ This rule establishes guidelines for writing comprehensive tests for new interfa
 
 ## Running tests after changes
 - After making code or test changes, run the relevant test suite before marking the task complete
+- Always rebuild before running tests (e.g., `cmake --build build`) to ensure binaries are up to date
 - Prefer `ctest --test-dir build --output-on-failure` unless a narrower test target is more appropriate
 
 ## Performance considerations

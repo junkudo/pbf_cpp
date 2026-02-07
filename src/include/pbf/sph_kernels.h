@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "pbf/vec2f.h"
+#include "pbf/vec.h"
 // SPH functions used in position based fluids code
 namespace pbf::sph {
     template<int Dim>

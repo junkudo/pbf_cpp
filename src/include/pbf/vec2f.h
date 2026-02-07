@@ -13,7 +13,7 @@ struct vec2f
     vec2f() {}
     constexpr vec2f(float x_, float y_) : x(x_), y(y_) {}
 
-    float& operator[](int i) {    
+    float& operator[](int i) {
         assert(i == 0 || i == 1);
         return (&x)[i];
     }
@@ -95,23 +95,17 @@ struct vec2f
             return *this / len;
         return vec2f{};
     }
+
+    static vec2f zero()
+    {
+        return vec2f(0.0f, 0.0f);
+    }
 };
+
 
 // allow scalar * vector
 constexpr vec2f operator*(float s, const vec2f& v)
 {
     return v * s;
 }
-
-template<int Dim>
-struct VecForDim; // primary template (undefined)
-
-template<>
-struct VecForDim<2>
-{
-    using type = vec2f;
-};
-
-template<int Dim>
-using Vec = typename VecForDim<Dim>::type;
 }

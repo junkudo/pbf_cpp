@@ -1,6 +1,6 @@
 #pragma once
 
-#include "pbf/vec2f.h"
+#include "pbf/vec.h"
 #include "pbf/sph_kernels.h"
 #include <vector>
 

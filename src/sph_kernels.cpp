@@ -1,6 +1,6 @@
 #include <numbers>
 #include "pbf/sph_kernels.h"
-#include "pbf/vec2f.h"
+#include "pbf/vec.h"
 
 namespace pbf::sph {
 

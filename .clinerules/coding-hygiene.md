@@ -17,5 +17,9 @@ This rule captures coding hygiene practices discovered during recent SPH kernel/
 ## Headers must include what they use
 - Public headers should include required standard headers directly (e.g., `<random>`), not rely on transitive includes from other files.
 
+## Renames must be committed separately
+- When renaming files, commit the rename separately before applying any content changes.
+- Avoid mixing renames with modifications in the same commit.
+
 ## Commits require explicit user request
 - Do **not** create commits unless the user explicitly asks for a commit.

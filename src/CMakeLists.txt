@@ -22,7 +22,7 @@ endif()
 
 # --- Executable ---
 add_executable(pbf_app
-    main.cpp
+    main_2d.cpp
 )
 
 target_link_libraries(pbf_app

@@ -17,6 +17,10 @@ This rule captures coding hygiene practices discovered during recent SPH kernel/
 ## Headers must include what they use
 - Public headers should include required standard headers directly (e.g., `<random>`), not rely on transitive includes from other files.
 
+## Comment non-obvious interfaces
+- Add concise comments for non-obvious classes, functions, and interfaces to capture intent and usage.
+- Keep comments brief and focused on behavior, parameters, or constraints that are not immediately obvious.
+
 ## Renames must be committed separately
 - When renaming files, commit the rename separately before applying any content changes.
 - Avoid mixing renames with modifications in the same commit.

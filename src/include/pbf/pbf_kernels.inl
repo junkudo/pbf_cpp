@@ -16,7 +16,7 @@ namespace pbf::sph {
             out_gradients.resize(neighbors.size() + 1);
 
             // Initialize self-gradient to zero
-            out_gradients[0] = Vec<Dim>(0.0f, 0.0f);
+            out_gradients[0] = Vec<Dim>::zero();
 
             // Get self position
             Vec<Dim> const& pi = positions[self_index];
@@ -78,7 +78,7 @@ namespace pbf::sph {
         std::vector<Vec<Dim>> const& positions,
         Vec<Dim>& out_correction) {
             // Initialize correction to zero
-            out_correction = Vec<Dim>(0.0f, 0.0f);
+            out_correction = Vec<Dim>::zero();
 
             // Get self position
             Vec<Dim> const& pi = positions[self_index];

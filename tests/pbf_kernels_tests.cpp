@@ -4,6 +4,7 @@
 #include "pbf/sph_kernels.h"
 #include "pbf/pbf_kernels.h"
 #include "pbf/vec2f.h"
+#include "pbf/vec3f.h"
 #include "fixtures/particle_fixtures.h"
 #include "fixtures/test_helpers.h"
 
@@ -48,8 +49,6 @@ TEST_F(DensityGridFixture, constraint_gradient) {
     const float epsilon = 1.0e-3f;
 
     // Compute finite difference for self-gradient (index 0)
-    vec2f original_pos = positions[0];
-
     // Perturb in +x direction
     positions[0].x += epsilon;
     float c_plus_x = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
@@ -70,8 +69,6 @@ TEST_F(DensityGridFixture, constraint_gradient) {
     // Compute finite difference for each neighbor gradient
     for (size_t k = 0; k < neighbors.size(); ++k) {
         int neighbor_index = neighbors[k];
-        vec2f original_neighbor_pos = positions[neighbor_index];
-
         // Perturb neighbor in +x direction
         positions[neighbor_index].x += epsilon;
         c_plus_x = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
@@ -206,5 +203,185 @@ TEST_F(DensityGridFixture, position_correction_matrix_vector_test) {
 
         EXPECT_NEAR(correction.x, deltap[i].x, 1.0e-4f) << "Particle " << i;
         EXPECT_NEAR(correction.y, deltap[i].y, 1.0e-4f) << "Particle " << i;
+    }
+}
+
+using testing::DensityGridFixture3D;
+TEST_F(DensityGridFixture3D, density_constraint_3d)
+{
+    float mass = 1.2f;
+    std::vector<int> neighbors;
+    float rest_density = 0.95f;
+    float density = pbf::sph::computeDensity<3, Kernel>(0, mass, h, neighbors, positions);
+    float density_constraint = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float tol = 1.0e-4f;
+    EXPECT_NEAR(density_constraint, density / rest_density - 1.0f, tol);
+}
+
+TEST_F(DensityGridFixture3D, constraint_gradient_3d) {
+    using Kernel = pbf::sph::Poly6<3>;
+
+    float mass = 1.2f;
+    float rest_density = 0.95f;
+    std::vector<int> neighbors;
+
+    neighbors = testing::get_neighbors_slow<3>(0, positions, h);
+
+    std::vector<pbf::vec3f> analytical_gradients;
+    pbf::sph::computeDensityConstraintGradients<3, Kernel>(
+        0, rest_density, mass, h, neighbors, positions, analytical_gradients);
+
+    std::vector<pbf::vec3f> fd_gradients;
+    fd_gradients.resize(neighbors.size() + 1);
+
+    const float epsilon = 1.0e-3f;
+
+    positions[0].x += epsilon;
+    float c_plus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    positions[0].x -= 2 * epsilon;
+    float c_minus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    positions[0].x += epsilon;
+
+    positions[0].y += epsilon;
+    float c_plus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    positions[0].y -= 2 * epsilon;
+    float c_minus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    positions[0].y += epsilon;
+
+    positions[0].z += epsilon;
+    float c_plus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    positions[0].z -= 2 * epsilon;
+    float c_minus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    positions[0].z += epsilon;
+
+    fd_gradients[0].x = (c_plus_x - c_minus_x) / (2 * epsilon);
+    fd_gradients[0].y = (c_plus_y - c_minus_y) / (2 * epsilon);
+    fd_gradients[0].z = (c_plus_z - c_minus_z) / (2 * epsilon);
+
+    for (size_t k = 0; k < neighbors.size(); ++k) {
+        int neighbor_index = neighbors[k];
+        positions[neighbor_index].x += epsilon;
+        c_plus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        positions[neighbor_index].x -= 2 * epsilon;
+        c_minus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        positions[neighbor_index].x += epsilon;
+
+        positions[neighbor_index].y += epsilon;
+        c_plus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        positions[neighbor_index].y -= 2 * epsilon;
+        c_minus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        positions[neighbor_index].y += epsilon;
+
+        positions[neighbor_index].z += epsilon;
+        c_plus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        positions[neighbor_index].z -= 2 * epsilon;
+        c_minus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        positions[neighbor_index].z += epsilon;
+
+        fd_gradients[k + 1].x = (c_plus_x - c_minus_x) / (2 * epsilon);
+        fd_gradients[k + 1].y = (c_plus_y - c_minus_y) / (2 * epsilon);
+        fd_gradients[k + 1].z = (c_plus_z - c_minus_z) / (2 * epsilon);
+    }
+
+    EXPECT_NEAR(analytical_gradients[0].x, fd_gradients[0].x, 1.0e-2f);
+    EXPECT_NEAR(analytical_gradients[0].y, fd_gradients[0].y, 1.0e-2f);
+    EXPECT_NEAR(analytical_gradients[0].z, fd_gradients[0].z, 1.0e-2f);
+
+    for (size_t k = 0; k < neighbors.size(); ++k) {
+        EXPECT_NEAR(analytical_gradients[k + 1].x, fd_gradients[k + 1].x, 1.0e-2f);
+        EXPECT_NEAR(analytical_gradients[k + 1].y, fd_gradients[k + 1].y, 1.0e-2f);
+        EXPECT_NEAR(analytical_gradients[k + 1].z, fd_gradients[k + 1].z, 1.0e-2f);
+    }
+}
+
+TEST_F(DensityGridFixture3D, lambda_computation_different_kernels_3d) {
+    using ConstraintKernel = pbf::sph::Poly6<3>;
+    using GradientKernel = pbf::sph::Spikey<3>;
+
+    float mass = 1.2f;
+    float rest_density = 0.95f;
+    float epsilon = 1.0e-6f;
+
+    std::vector<int> neighbors = testing::get_neighbors_slow<3>(0, positions, h);
+
+    float lambda = pbf::sph::computeLambda<3, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, positions);
+
+    EXPECT_TRUE(std::isfinite(lambda));
+
+    float constraint = pbf::sph::computeDensityConstraint<3, ConstraintKernel>(
+        0, rest_density, mass, h, neighbors, positions);
+
+    std::vector<pbf::vec3f> gradients;
+    pbf::sph::computeDensityConstraintGradients<3, GradientKernel>(
+        0, rest_density, mass, h, neighbors, positions, gradients);
+
+    float sum_grad_sq = 0.0f;
+    for (const auto& grad : gradients) {
+        sum_grad_sq += grad.dot(grad);
+    }
+    float expected_lambda = -constraint / (sum_grad_sq + epsilon);
+
+    EXPECT_NEAR(lambda, expected_lambda, 1.0e-4f);
+}
+
+TEST_F(DensityGridFixture3D, position_correction_matrix_vector_test_3d) {
+    using Kernel = pbf::sph::Spikey<3>;
+
+    float mass = 1.2f;
+    float rest_density = 0.95f;
+    float epsilon = 1.0e-6f;
+
+    std::vector<float> lambdas(nparticles);
+    std::random_device rd;
+    std::mt19937 gen(42);
+    std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+
+    for (int i = 0; i < nparticles; ++i) {
+        lambdas[i] = dis(gen);
+    }
+
+    std::vector<std::vector<float>> gradc(nparticles * 3, std::vector<float>(nparticles, 0.0f));
+
+    for (int i = 0; i < nparticles; ++i) {
+        std::vector<int> neighbors = testing::get_neighbors_slow<3>(i, positions, h);
+        std::vector<pbf::vec3f> gradients;
+        pbf::sph::computeDensityConstraintGradients<3, Kernel>(
+            i, rest_density, mass, h, neighbors, positions, gradients);
+
+        gradc[i * 3][i] = gradients[0].x;
+        gradc[i * 3 + 1][i] = gradients[0].y;
+        gradc[i * 3 + 2][i] = gradients[0].z;
+
+        for (size_t k = 0; k < neighbors.size(); ++k) {
+            int neighbor_index = neighbors[k];
+            gradc[neighbor_index * 3][i] = gradients[k + 1].x;
+            gradc[neighbor_index * 3 + 1][i] = gradients[k + 1].y;
+            gradc[neighbor_index * 3 + 2][i] = gradients[k + 1].z;
+        }
+    }
+
+    std::vector<pbf::vec3f> deltap(nparticles);
+    for (int i = 0; i < nparticles; ++i) {
+        float sum_x = 0.0f;
+        float sum_y = 0.0f;
+        float sum_z = 0.0f;
+        for (int j = 0; j < nparticles; ++j) {
+            sum_x += gradc[i * 3][j] * lambdas[j];
+            sum_y += gradc[i * 3 + 1][j] * lambdas[j];
+            sum_z += gradc[i * 3 + 2][j] * lambdas[j];
+        }
+        deltap[i] = pbf::vec3f(sum_x, sum_y, sum_z);
+    }
+
+    for (int i = 0; i < nparticles; ++i) {
+        std::vector<int> neighbors = testing::get_neighbors_slow<3>(i, positions, h);
+        pbf::vec3f correction;
+        pbf::sph::calculatePositionCorrection<3, Kernel>(
+            i, rest_density, mass, h, neighbors, lambdas, positions, correction);
+
+        EXPECT_NEAR(correction.x, deltap[i].x, 1.0e-4f) << "Particle " << i;
+        EXPECT_NEAR(correction.y, deltap[i].y, 1.0e-4f) << "Particle " << i;
+        EXPECT_NEAR(correction.z, deltap[i].z, 1.0e-4f) << "Particle " << i;
     }
 }

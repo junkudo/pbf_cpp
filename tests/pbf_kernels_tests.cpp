@@ -33,7 +33,7 @@ TEST_F(DensityGridFixture, constraint_gradient) {
     std::vector<int> neighbors;
 
     // Get neighbors for particle 0 (self-particle)
-    neighbors = testing::get_neighbors_slow(0, positions, h);
+    neighbors = testing::get_neighbors_slow<2>(0, positions, h);
 
     // Compute analytical gradients
     std::vector<vec2f> analytical_gradients;
@@ -115,7 +115,7 @@ TEST_F(DensityGridFixture, lambda_computation_different_kernels) {
     float epsilon = 1.0e-6f;
 
     // Get neighbors for particle 0
-    std::vector<int> neighbors = testing::get_neighbors_slow(0, positions, h);
+    std::vector<int> neighbors = testing::get_neighbors_slow<2>(0, positions, h);
 
     // Compute lambda using different kernels (Poly6 for constraint, Spikey for gradients)
     float lambda = pbf::sph::computeLambda<2, ConstraintKernel, GradientKernel>(
@@ -164,7 +164,7 @@ TEST_F(DensityGridFixture, position_correction_matrix_vector_test) {
 
     // Fill gradient matrix using existing constraint gradient function
     for (int i = 0; i < nparticles; ++i) {
-        std::vector<int> neighbors = testing::get_neighbors_slow(i, positions, h);
+        std::vector<int> neighbors = testing::get_neighbors_slow<2>(i, positions, h);
         std::vector<vec2f> gradients;
         pbf::sph::computeDensityConstraintGradients<2, Kernel>(
             i, rest_density, mass, h, neighbors, positions, gradients);
@@ -199,7 +199,7 @@ TEST_F(DensityGridFixture, position_correction_matrix_vector_test) {
 
     // Compare with calculatePositionCorrection for each particle
     for (int i = 0; i < nparticles; ++i) {
-        std::vector<int> neighbors = testing::get_neighbors_slow(i, positions, h);
+        std::vector<int> neighbors = testing::get_neighbors_slow<2>(i, positions, h);
         vec2f correction;
         pbf::sph::calculatePositionCorrection<2, Kernel>(
             i, rest_density, mass, h, neighbors, lambdas, positions, correction);

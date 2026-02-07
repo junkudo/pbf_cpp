@@ -14,6 +14,13 @@ namespace pbf::sph {
         static Vec<2> deriv(Vec<2> const & rVec, const float h);
     };
 
+    template <>
+    struct Poly6<3> {
+        static float eval(Vec<3> const & rVec, const float h);
+        static float evalAtZero(const float h);
+        static Vec<3> deriv(Vec<3> const & rVec, const float h);
+    };
+
     template <int Dim>
     struct Spikey;
 
@@ -22,6 +29,13 @@ namespace pbf::sph {
         static float eval(Vec<2> const & rVec, const float h);
         static float evalAtZero(const float h);
         static Vec<2> deriv(Vec<2> const & rVec, const float h);
+    };
+
+    template <>
+    struct Spikey<3> {
+        static float eval(Vec<3> const & rVec, const float h);
+        static float evalAtZero(const float h);
+        static Vec<3> deriv(Vec<3> const & rVec, const float h);
     };
 
     template <int Dim, typename Kernel>

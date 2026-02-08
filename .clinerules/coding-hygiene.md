@@ -17,6 +17,11 @@ This rule captures coding hygiene practices discovered during recent SPH kernel/
 ## Headers must include what they use
 - Public headers should include required standard headers directly (e.g., `<random>`), not rely on transitive includes from other files.
 
+## Template headers should use .inl files for definitions
+- For templated interfaces, keep declarations in the `.h` and move definitions into a matching `.inl` file.
+- Include the `.inl` at the bottom of the header to ensure template definitions are visible to all translation units.
+- Follow the existing pattern used by `pbf_kernels.h/.inl` and `sph_kernels.h/.inl`.
+
 ## Comment non-obvious interfaces
 - Add concise comments for non-obvious classes, functions, and interfaces to capture intent and usage.
 - Keep comments brief and focused on behavior, parameters, or constraints that are not immediately obvious.

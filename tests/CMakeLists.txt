@@ -27,6 +27,7 @@ add_executable(pbf_tests
     pbf_kernels_tests.cpp
     spatial_hash_tests.cpp
     visualization_tests.cpp
+    particle_system_tests.cpp
     vec2f_tests.cpp
     vec3f_tests.cpp
 )

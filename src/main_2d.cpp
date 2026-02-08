@@ -1,6 +1,6 @@
+#include <array>
 #include <iostream>
 #include <vector>
-#include <random>
 #include <cmath>
 #include <algorithm>
 #include <memory>
@@ -8,72 +8,13 @@
 #include "pbf/pbf_kernels.h"
 #include "pbf/spatial_hash.h"
 #include "pbf/sph_kernels.h"
+#include "pbf/particle_system.h"
 #include "pbf/vec2f.h"
 #include "pbf/visualization.h"
 #include "pbf/config.h"
 #include "raylib.h"
 
 using namespace pbf;
-
-class ParticleSystem {
-public:
-    std::vector<vec2f> positions_;
-    std::vector<vec2f> velocities_;
-    std::vector<float> lambdas_;
-    int num_particles_;
-    PhysicsConfig config_;
-
-private:
-
-public:
-    ParticleSystem(int num_x, int num_y, const PhysicsConfig& config)
-        : num_particles_(num_x * num_y), config_(config) {
-        positions_.resize(num_particles_);
-        velocities_.resize(num_particles_);
-        lambdas_.resize(num_particles_);
-
-        // Initialize particles in a jittered grid
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> jitter(-config_.jitterFactor * config_.particleSpacing,
-                                                     config_.jitterFactor * config_.particleSpacing);
-
-        int index = 0;
-        for (int y = 0; y < num_y; ++y) {
-            for (int x = 0; x < num_x; ++x) {
-                float px = x * config_.particleSpacing + jitter(gen);
-                float py = y * config_.particleSpacing + jitter(gen) + 0.05f; // Offset from origin
-                positions_[index] = vec2f(px, py);
-                velocities_[index] = vec2f(0.0f, 0.0f);
-                ++index;
-            }
-        }
-    }
-
-    void updateVelocityFromGravity() {
-        for (auto& v : velocities_) {
-            v.y -= config_.gravity * config_.timeStep;
-        }
-    }
-
-    std::vector<vec2f> predictPositions() const {
-        std::vector<vec2f> predicted = positions_;
-        for (int i = 0; i < num_particles_; ++i) {
-            predicted[i] += velocities_[i] * config_.timeStep;
-        }
-        return predicted;
-    }
-
-    void updatePositions(const std::vector<vec2f>& corrections) {
-        for (int i = 0; i < num_particles_; ++i) {
-            positions_[i] += corrections[i];
-            velocities_[i] = corrections[i] / config_.timeStep;
-        }
-    }
-
-    const std::vector<vec2f>& getPositions() const { return positions_; }
-    int getNumParticles() const { return num_particles_; }
-};
 
 float calculateLambda(int i, const std::vector<int>& neighbors,
                       const std::vector<vec2f>& positions, const PhysicsConfig& config) {
@@ -97,7 +38,7 @@ std::vector<vec2f> solveConstraints(const std::vector<vec2f>& predicted_position
     return corrections;
 }
 
-void runSimulationStep(ParticleSystem& system, SpatialHash& spatial_hash, const SolverConfig& solver_config) {
+void runSimulationStep(ParticleSystem<2>& system, SpatialHash& spatial_hash, const SolverConfig& solver_config) {
     const PhysicsConfig& physics_config = system.config_;  // Get physics config from system
 
     // 1. Update velocities from gravity
@@ -113,7 +54,7 @@ void runSimulationStep(ParticleSystem& system, SpatialHash& spatial_hash, const 
     auto neighbors = spatial_hash.getAllNeighbors();
 
     // 5. Solve constraints (iterations from solver config)
-    std::vector<vec2f> total_corrections(system.getNumParticles(), vec2f(0.0f, 0.0f));
+    std::vector<vec2f> total_corrections(system.getNumParticles(), vec2f::zero());
     std::vector<float> lambdas(system.getNumParticles(), 0.0f);
 
     for (int iter = 0; iter < solver_config.numIterations; ++iter) {
@@ -153,7 +94,9 @@ int main() {
     // Initialize raylib
     InitWindow(app_config.visualization.screenWidth, app_config.visualization.screenHeight, "PBF Fluid Simulation");
 
-    ParticleSystem system(10, 10, app_config.physics);
+    const std::array<int, 2> particle_counts{10, 10};
+    const vec2f origin_offset(0.0f, 0.05f);
+    ParticleSystem<2> system(particle_counts, app_config.physics, origin_offset);
 
     // Build spatial hash
     float domain_size = 10.0f * app_config.physics.particleSpacing;

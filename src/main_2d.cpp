@@ -38,7 +38,7 @@ std::vector<vec2f> solveConstraints(const std::vector<vec2f>& predicted_position
     return corrections;
 }
 
-void runSimulationStep(ParticleSystem<2>& system, SpatialHash& spatial_hash, const SolverConfig& solver_config) {
+void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash, const SolverConfig& solver_config) {
     const PhysicsConfig& physics_config = system.config_;  // Get physics config from system
 
     // 1. Update velocities from gravity
@@ -100,7 +100,9 @@ int main() {
 
     // Build spatial hash
     float domain_size = 10.0f * app_config.physics.particleSpacing;
-    SpatialHash spatial_hash(-domain_size, -domain_size, domain_size, domain_size, app_config.physics.kernelRadius);
+    vec2f min_bounds(-domain_size, -domain_size);
+    vec2f max_bounds(domain_size, domain_size);
+    SpatialHash<2> spatial_hash(min_bounds, max_bounds, app_config.physics.kernelRadius);
 
     float simulationTime = 0.0f;  // Add time tracking
 

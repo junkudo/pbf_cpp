@@ -1,9 +1,13 @@
 #pragma once
 
-#include <vector>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstddef>
 #include <unordered_map>
-#include <cstdint>
-#include "pbf/vec2f.h"
+#include <vector>
+
+#include "pbf/vec.h"
 
 namespace pbf {
 
@@ -12,27 +16,29 @@ namespace pbf {
  *
  * Divides the simulation domain into a grid of cells with size equal to the kernel radius h.
  * Particles are inserted into appropriate cells, and neighbor queries only need to check
- * the particle's own cell plus the 8 surrounding cells.
+ * a 3^Dim neighborhood around the particle's cell.
  *
  * Performance: O(n) build time, O(1) average query time per particle
  */
+template<int Dim>
 class SpatialHash {
 public:
+    using Vec = pbf::Vec<Dim>;
+    using CellCoord = std::array<int, Dim>;
+
     /**
      * Constructor
-     * @param xmin Minimum x coordinate of simulation domain
-     * @param ymin Minimum y coordinate of simulation domain
-     * @param xmax Maximum x coordinate of simulation domain
-     * @param ymax Maximum y coordinate of simulation domain
+     * @param min_bounds Minimum coordinates of simulation domain
+     * @param max_bounds Maximum coordinates of simulation domain
      * @param h Kernel radius (also used as cell size)
      */
-    SpatialHash(float xmin, float ymin, float xmax, float ymax, float h);
+    SpatialHash(const Vec& min_bounds, const Vec& max_bounds, float h);
 
     /**
      * Update particle positions in the spatial hash
      * @param positions Vector of particle positions
      */
-    void update(const std::vector<vec2f>& positions);
+    void update(const std::vector<Vec>& positions);
 
     /**
      * Get neighbors for a specific particle
@@ -48,31 +54,23 @@ public:
     std::vector<std::vector<int>> getAllNeighbors() const;
 
 private:
-    // Cell coordinate type
-    struct CellCoord {
-        int x;
-        int y;
-
-        bool operator==(const CellCoord& other) const {
-            return x == other.x && y == other.y;
-        }
-    };
-
-    // Hash function for CellCoord
     struct CellCoordHash {
         std::size_t operator()(const CellCoord& coord) const {
-            // Simple hash combining x and y coordinates
-            return static_cast<std::size_t>(coord.x) * 31 + static_cast<std::size_t>(coord.y);
+            std::size_t hash = 0;
+            for (int dim = 0; dim < Dim; ++dim) {
+                hash = hash * 31u + static_cast<std::size_t>(coord[dim]);
+            }
+            return hash;
         }
     };
 
     // Domain bounds
-    float xmin_, ymin_, xmax_, ymax_;
+    Vec min_bounds_;
+    Vec max_bounds_;
     float h_;
 
     // Grid parameters
-    int nx_cells_;
-    int ny_cells_;
+    CellCoord cell_counts_{};
 
     // Cell size (equal to kernel radius)
     float cell_size_;
@@ -81,28 +79,30 @@ private:
     std::unordered_map<CellCoord, std::vector<int>, CellCoordHash> cell_map_;
 
     // Particle positions and their cell coordinates
-    std::vector<vec2f> positions_;
+    std::vector<Vec> positions_;
     std::vector<CellCoord> particle_cells_;
 
     /**
      * Convert world coordinates to cell coordinates
      */
-    CellCoord worldToCell(float x, float y) const;
+    CellCoord worldToCell(const Vec& position) const;
 
     /**
      * Convert cell coordinates to world coordinates (center of cell)
      */
-    vec2f cellToWorld(int cell_x, int cell_y) const;
+    Vec cellToWorld(const CellCoord& cell) const;
 
     /**
-     * Get all particles in a 3x3 neighborhood around a cell
+     * Get all particles in a 3^Dim neighborhood around a cell
      */
     std::vector<int> getNeighborsInNeighborhood(const CellCoord& center_cell) const;
 
     /**
      * Check if a particle is within distance h of a query point
      */
-    bool isWithinRange(const vec2f& query_pos, int particle_index) const;
+    bool isWithinRange(const Vec& query_pos, int particle_index) const;
 };
 
 } // namespace pbf
+
+#include "pbf/spatial_hash.inl"

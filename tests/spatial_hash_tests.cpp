@@ -6,10 +6,10 @@
 
 namespace {
 
-// Helper function for brute force neighbor search
-std::vector<int> getNeighborsBruteForce(int self_index,
-                                       const std::vector<pbf::vec2f>& positions,
-                                       float h) {
+// Helper function for brute force neighbor search (2D)
+std::vector<int> getNeighborsBruteForce2D(int self_index,
+                                          const std::vector<pbf::vec2f>& positions,
+                                          float h) {
     std::vector<int> neighbors;
     const pbf::vec2f& position_i = positions.at(self_index);
 
@@ -18,6 +18,28 @@ std::vector<int> getNeighborsBruteForce(int self_index,
 
         const pbf::vec2f& position_j = positions.at(j);
         pbf::vec2f diff = position_i - position_j;
+        float distance = diff.length();
+
+        if (distance <= h) {
+            neighbors.push_back(static_cast<int>(j));
+        }
+    }
+
+    return neighbors;
+}
+
+// Helper function for brute force neighbor search (3D)
+std::vector<int> getNeighborsBruteForce3D(int self_index,
+                                          const std::vector<pbf::vec3f>& positions,
+                                          float h) {
+    std::vector<int> neighbors;
+    const pbf::vec3f& position_i = positions.at(self_index);
+
+    for (size_t j = 0; j < positions.size(); ++j) {
+        if (static_cast<int>(j) == self_index) continue;
+
+        const pbf::vec3f& position_j = positions.at(j);
+        pbf::vec3f diff = position_i - position_j;
         float distance = diff.length();
 
         if (distance <= h) {
@@ -64,7 +86,9 @@ struct SpatialHashTest : ::testing::Test {
 
 TEST_F(SpatialHashTest, EmptyDomain) {
     std::vector<pbf::vec2f> positions;
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     EXPECT_TRUE(spatial_hash.getNeighbors(0).empty());
@@ -74,7 +98,9 @@ TEST_F(SpatialHashTest, EmptyDomain) {
 
 TEST_F(SpatialHashTest, SingleParticle) {
     std::vector<pbf::vec2f> positions = {{5.0f, 5.0f}};
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     EXPECT_TRUE(spatial_hash.getNeighbors(0).empty());
@@ -85,7 +111,9 @@ TEST_F(SpatialHashTest, SingleParticle) {
 
 TEST_F(SpatialHashTest, TwoParticlesWithinRange) {
     std::vector<pbf::vec2f> positions = {{5.0f, 5.0f}, {5.5f, 5.0f}};
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     auto neighbors_0 = spatial_hash.getNeighbors(0);
@@ -99,7 +127,9 @@ TEST_F(SpatialHashTest, TwoParticlesWithinRange) {
 
 TEST_F(SpatialHashTest, TwoParticlesOutOfRange) {
     std::vector<pbf::vec2f> positions = {{5.0f, 5.0f}, {7.0f, 5.0f}};
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     auto neighbors_0 = spatial_hash.getNeighbors(0);
@@ -113,13 +143,15 @@ TEST_F(SpatialHashTest, GridParticlesCorrectness) {
     int nx = 5, ny = 5;
     float spacing = 0.8f;
     std::vector<pbf::vec2f> positions = createGridParticles(nx, ny, spacing);
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     // Test all particles
     for (size_t i = 0; i < positions.size(); ++i) {
         auto spatial_neighbors = spatial_hash.getNeighbors(static_cast<int>(i));
-        auto brute_neighbors = getNeighborsBruteForce(static_cast<int>(i), positions, h);
+        auto brute_neighbors = getNeighborsBruteForce2D(static_cast<int>(i), positions, h);
 
         // Sort both neighbor lists for comparison
         std::sort(spatial_neighbors.begin(), spatial_neighbors.end());
@@ -133,13 +165,15 @@ TEST_F(SpatialHashTest, GridParticlesCorrectness) {
 TEST_F(SpatialHashTest, RandomParticlesCorrectness) {
     int num_particles = 100;
     std::vector<pbf::vec2f> positions = createRandomParticles(num_particles);
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     // Test all particles
     for (int i = 0; i < num_particles; ++i) {
         auto spatial_neighbors = spatial_hash.getNeighbors(i);
-        auto brute_neighbors = getNeighborsBruteForce(i, positions, h);
+        auto brute_neighbors = getNeighborsBruteForce2D(i, positions, h);
 
         // Sort both neighbor lists for comparison
         std::sort(spatial_neighbors.begin(), spatial_neighbors.end());
@@ -160,13 +194,15 @@ TEST_F(SpatialHashTest, BoundaryConditions) {
         {5.0f, 5.0f}     // Center
     };
 
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     // Test all particles
     for (size_t i = 0; i < positions.size(); ++i) {
         auto spatial_neighbors = spatial_hash.getNeighbors(static_cast<int>(i));
-        auto brute_neighbors = getNeighborsBruteForce(static_cast<int>(i), positions, h);
+        auto brute_neighbors = getNeighborsBruteForce2D(static_cast<int>(i), positions, h);
 
         // Sort both neighbor lists for comparison
         std::sort(spatial_neighbors.begin(), spatial_neighbors.end());
@@ -181,7 +217,9 @@ TEST_F(SpatialHashTest, UpdatePositions) {
     std::vector<pbf::vec2f> positions1 = {{5.0f, 5.0f}, {5.5f, 5.0f}};
     std::vector<pbf::vec2f> positions2 = {{5.0f, 5.0f}, {7.0f, 5.0f}};
 
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
 
     // First update
     spatial_hash.update(positions1);
@@ -197,7 +235,9 @@ TEST_F(SpatialHashTest, UpdatePositions) {
 
 TEST_F(SpatialHashTest, GetAllNeighbors) {
     std::vector<pbf::vec2f> positions = createRandomParticles(50);
-    pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
     spatial_hash.update(positions);
 
     auto all_spatial = spatial_hash.getAllNeighbors();
@@ -210,41 +250,194 @@ TEST_F(SpatialHashTest, GetAllNeighbors) {
     }
 }
 
-// TEST_F(SpatialHashTest, PerformanceComparison) {
-//     int num_particles = 1000;
-//     std::vector<pbf::vec2f> positions = createRandomParticles(num_particles);
-//     pbf::SpatialHash spatial_hash(0, 0, domain_size, domain_size, h);
-//     spatial_hash.update(positions);
+struct SpatialHash3DTest : ::testing::Test {
+    std::mt19937 rng{1337};
+    float h = 1.0f;
+    float domain_size = 6.0f;
 
-//     // Time spatial hash
-//     auto start = std::chrono::high_resolution_clock::now();
-//     auto spatial_neighbors = spatial_hash.getAllNeighbors();
-//     auto end = std::chrono::high_resolution_clock::now();
-//     auto spatial_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::vector<pbf::vec3f> createRandomParticles(int count) {
+        std::uniform_real_distribution<float> dist(0.0f, domain_size);
+        std::vector<pbf::vec3f> positions;
+        positions.reserve(count);
 
-//     // Time brute force
-//     start = std::chrono::high_resolution_clock::now();
-//     std::vector<std::vector<int>> brute_neighbors;
-//     brute_neighbors.reserve(num_particles);
-//     for (int i = 0; i < num_particles; ++i) {
-//         brute_neighbors.push_back(getNeighborsBruteForce(i, positions, h));
-//     }
-//     end = std::chrono::high_resolution_clock::now();
-//     auto brute_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        for (int i = 0; i < count; ++i) {
+            positions.emplace_back(dist(rng), dist(rng), dist(rng));
+        }
 
-//     // Verify correctness
-//     for (size_t i = 0; i < positions.size(); ++i) {
-//         std::sort(spatial_neighbors[i].begin(), spatial_neighbors[i].end());
-//         std::sort(brute_neighbors[i].begin(), brute_neighbors[i].end());
-//         EXPECT_EQ(spatial_neighbors[i], brute_neighbors[i]);
-//     }
+        return positions;
+    }
 
-//     // Spatial hash should be faster for large particle counts
-//     // (Note: This might not always be true for small particle counts due to overhead)
-//     std::cout << "Spatial hash time: " << spatial_time.count() << " microseconds\n";
-//     std::cout << "Brute force time: " << brute_time.count() << " microseconds\n";
-//     std::cout << "Speedup: " << static_cast<double>(brute_time.count()) / spatial_time.count() << "x\n";
-// }
+    std::vector<pbf::vec3f> createGridParticles(int nx, int ny, int nz, float spacing) {
+        std::vector<pbf::vec3f> positions;
+        positions.reserve(nx * ny * nz);
 
+        for (int k = 0; k < nz; ++k) {
+            for (int j = 0; j < ny; ++j) {
+                for (int i = 0; i < nx; ++i) {
+                    positions.emplace_back(i * spacing, j * spacing, k * spacing);
+                }
+            }
+        }
+
+        return positions;
+    }
+};
+
+TEST_F(SpatialHash3DTest, EmptyDomain) {
+    std::vector<pbf::vec3f> positions;
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    EXPECT_TRUE(spatial_hash.getNeighbors(0).empty());
+    auto all_neighbors = spatial_hash.getAllNeighbors();
+    EXPECT_TRUE(all_neighbors.empty());
+}
+
+TEST_F(SpatialHash3DTest, SingleParticle) {
+    std::vector<pbf::vec3f> positions = {{2.0f, 2.0f, 2.0f}};
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    EXPECT_TRUE(spatial_hash.getNeighbors(0).empty());
+    auto all_neighbors = spatial_hash.getAllNeighbors();
+    EXPECT_EQ(all_neighbors.size(), 1);
+    EXPECT_TRUE(all_neighbors[0].empty());
+}
+
+TEST_F(SpatialHash3DTest, TwoParticlesWithinRange) {
+    std::vector<pbf::vec3f> positions = {{2.0f, 2.0f, 2.0f}, {2.5f, 2.0f, 2.0f}};
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    auto neighbors_0 = spatial_hash.getNeighbors(0);
+    auto neighbors_1 = spatial_hash.getNeighbors(1);
+
+    EXPECT_EQ(neighbors_0.size(), 1);
+    EXPECT_EQ(neighbors_0[0], 1);
+    EXPECT_EQ(neighbors_1.size(), 1);
+    EXPECT_EQ(neighbors_1[0], 0);
+}
+
+TEST_F(SpatialHash3DTest, TwoParticlesOutOfRange) {
+    std::vector<pbf::vec3f> positions = {{2.0f, 2.0f, 2.0f}, {4.0f, 2.0f, 2.0f}};
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    auto neighbors_0 = spatial_hash.getNeighbors(0);
+    auto neighbors_1 = spatial_hash.getNeighbors(1);
+
+    EXPECT_TRUE(neighbors_0.empty());
+    EXPECT_TRUE(neighbors_1.empty());
+}
+
+TEST_F(SpatialHash3DTest, GridParticlesCorrectness) {
+    int nx = 4, ny = 4, nz = 4;
+    float spacing = 0.8f;
+    std::vector<pbf::vec3f> positions = createGridParticles(nx, ny, nz, spacing);
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    for (size_t i = 0; i < positions.size(); ++i) {
+        auto spatial_neighbors = spatial_hash.getNeighbors(static_cast<int>(i));
+        auto brute_neighbors = getNeighborsBruteForce3D(static_cast<int>(i), positions, h);
+
+        std::sort(spatial_neighbors.begin(), spatial_neighbors.end());
+        std::sort(brute_neighbors.begin(), brute_neighbors.end());
+
+        EXPECT_EQ(spatial_neighbors, brute_neighbors)
+            << "3D particle " << i << " has different neighbors";
+    }
+}
+
+TEST_F(SpatialHash3DTest, RandomParticlesCorrectness) {
+    int num_particles = 75;
+    std::vector<pbf::vec3f> positions = createRandomParticles(num_particles);
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    for (int i = 0; i < num_particles; ++i) {
+        auto spatial_neighbors = spatial_hash.getNeighbors(i);
+        auto brute_neighbors = getNeighborsBruteForce3D(i, positions, h);
+
+        std::sort(spatial_neighbors.begin(), spatial_neighbors.end());
+        std::sort(brute_neighbors.begin(), brute_neighbors.end());
+
+        EXPECT_EQ(spatial_neighbors, brute_neighbors)
+            << "3D particle " << i << " has different neighbors";
+    }
+}
+
+TEST_F(SpatialHash3DTest, BoundaryConditions) {
+    std::vector<pbf::vec3f> positions = {
+        {0.1f, 0.1f, 0.1f},
+        {0.1f, 0.1f, domain_size - 0.1f},
+        {0.1f, domain_size - 0.1f, 0.1f},
+        {domain_size - 0.1f, 0.1f, 0.1f},
+        {domain_size - 0.1f, domain_size - 0.1f, domain_size - 0.1f},
+        {3.0f, 3.0f, 3.0f}
+    };
+
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    for (size_t i = 0; i < positions.size(); ++i) {
+        auto spatial_neighbors = spatial_hash.getNeighbors(static_cast<int>(i));
+        auto brute_neighbors = getNeighborsBruteForce3D(static_cast<int>(i), positions, h);
+
+        std::sort(spatial_neighbors.begin(), spatial_neighbors.end());
+        std::sort(brute_neighbors.begin(), brute_neighbors.end());
+
+        EXPECT_EQ(spatial_neighbors, brute_neighbors)
+            << "3D particle " << i << " has different neighbors near boundary";
+    }
+}
+
+TEST_F(SpatialHash3DTest, UpdatePositions) {
+    std::vector<pbf::vec3f> positions1 = {{2.0f, 2.0f, 2.0f}, {2.5f, 2.0f, 2.0f}};
+    std::vector<pbf::vec3f> positions2 = {{2.0f, 2.0f, 2.0f}, {4.0f, 2.0f, 2.0f}};
+
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+
+    spatial_hash.update(positions1);
+    auto neighbors_1 = spatial_hash.getNeighbors(0);
+    EXPECT_EQ(neighbors_1.size(), 1);
+    EXPECT_EQ(neighbors_1[0], 1);
+
+    spatial_hash.update(positions2);
+    auto neighbors_2 = spatial_hash.getNeighbors(0);
+    EXPECT_TRUE(neighbors_2.empty());
+}
+
+TEST_F(SpatialHash3DTest, GetAllNeighbors) {
+    std::vector<pbf::vec3f> positions = createRandomParticles(40);
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    auto all_spatial = spatial_hash.getAllNeighbors();
+    EXPECT_EQ(all_spatial.size(), positions.size());
+
+    for (size_t i = 0; i < positions.size(); ++i) {
+        auto individual = spatial_hash.getNeighbors(static_cast<int>(i));
+        EXPECT_EQ(all_spatial[i], individual);
+    }
+}
 
 } // namespace

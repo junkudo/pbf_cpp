@@ -1,7 +1,6 @@
 add_library(pbf STATIC
   pbf_kernels.cpp
   sph_kernels.cpp
-  spatial_hash.cpp
   visualization.cpp
 )
 

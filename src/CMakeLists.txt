@@ -9,6 +9,7 @@ target_include_directories(pbf
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../external/raylib/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../external/raylib/examples/shaders
 )
 
 # Warnings
@@ -25,6 +26,15 @@ add_executable(pbf_app
 )
 
 target_link_libraries(pbf_app
+    PRIVATE pbf
+    PRIVATE raylib
+)
+
+add_executable(pbf_app_3d
+    main_3d.cpp
+)
+
+target_link_libraries(pbf_app_3d
     PRIVATE pbf
     PRIVATE raylib
 )

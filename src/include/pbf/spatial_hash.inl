@@ -123,7 +123,7 @@ bool SpatialHash<Dim>::isWithinRange(const Vec& query_pos, int particle_index) c
     const Vec& particle_pos = positions_[particle_index];
     Vec diff = query_pos - particle_pos;
     float distance_squared = diff.dot(diff);
-    return distance_squared <= h_ * h_;
+    return distance_squared < h_ * h_;
 }
 
 } // namespace pbf

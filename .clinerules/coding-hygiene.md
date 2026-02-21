@@ -25,6 +25,9 @@ This rule captures coding hygiene practices discovered during recent SPH kernel/
 ## Comment non-obvious interfaces
 - Add concise comments for non-obvious classes, functions, and interfaces to capture intent and usage.
 - Keep comments brief and focused on behavior, parameters, or constraints that are not immediately obvious.
+## Comment new code succinctly
+- New code should include succinct comments explaining intent or non-obvious behavior.
+- Avoid verbose commentary; prioritize clarity with minimal words.
 
 ## Renames must be committed separately
 - When renaming files, commit the rename separately before applying any content changes.

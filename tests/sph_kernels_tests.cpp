@@ -37,6 +37,9 @@ TEST(sph_kernels, normalization)
 {
     testSPHKernelNormalization<pbf::sph::Poly6<2>>("Poly6");
     testSPHKernelNormalization<pbf::sph::Spikey<2>>("Spikey");
+    // CubicSpline uses support q <= 1 to mirror FluidDemo's neighbor cutoff;
+    // the 2D normalization constant is renormalized so the integral is 1.
+    testSPHKernelNormalization<pbf::sph::CubicSpline<2>>("CubicSpline");
 }
 
 template <typename SPHKernel>
@@ -64,6 +67,7 @@ TEST(sph_kernels, normalization_3d)
 {
     testSPHKernelNormalization3D<pbf::sph::Poly6<3>>("Poly6");
     testSPHKernelNormalization3D<pbf::sph::Spikey<3>>("Spikey");
+    testSPHKernelNormalization3D<pbf::sph::CubicSpline<3>>("CubicSpline");
 }
 
 template <int Dim, typename SPHKernel>
@@ -100,6 +104,16 @@ TEST(sph_kernels, spikey_at_zero)
     EXPECT_NEAR(f, fAtZero, tolerance);
 }
 
+TEST(sph_kernels, cubic_spline_at_zero)
+{
+    float h = 3.2f;
+    testSPHKernelConsistencyAtZero<2, pbf::sph::CubicSpline<2>>("CubicSpline", h);
+    float fAtZero = pbf::sph::CubicSpline<2>::evalAtZero(h);
+    float tolerance = 1.0e-3f;
+    float f = 40.0f / (7.0f * std::numbers::pi_v<float> * std::pow(h, 2));
+    EXPECT_NEAR(f, fAtZero, tolerance);
+}
+
 TEST(sph_kernels, poly6_at_zero_3d)
 {
     float h = 3.2f;
@@ -117,6 +131,16 @@ TEST(sph_kernels, spikey_at_zero_3d)
     float fAtZero = pbf::sph::Spikey<3>::evalAtZero(h);
     float tolerance = 1.0e-3f;
     float f =  15.0f / (std::numbers::pi_v<float> * std::pow(h, 6)) * std::pow(h, 3);
+    EXPECT_NEAR(f, fAtZero, tolerance);
+}
+
+TEST(sph_kernels, cubic_spline_at_zero_3d)
+{
+    float h = 3.2f;
+    testSPHKernelConsistencyAtZero<3, pbf::sph::CubicSpline<3>>("CubicSpline", h);
+    float fAtZero = pbf::sph::CubicSpline<3>::evalAtZero(h);
+    float tolerance = 1.0e-3f;
+    float f = 8.0f / (std::numbers::pi_v<float> * std::pow(h, 3));
     EXPECT_NEAR(f, fAtZero, tolerance);
 }
 
@@ -181,6 +205,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
 TEST(sph_kernels, derivative_consistency) {
     testSPHKernelFiniteDifference<pbf::sph::Poly6<2>>("Poly6");
     testSPHKernelFiniteDifference<pbf::sph::Spikey<2>>("Spikey");
+    testSPHKernelFiniteDifference<pbf::sph::CubicSpline<2>>("CubicSpline");
 }
 
 template <typename SPHKernel>
@@ -243,6 +268,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
 TEST(sph_kernels, derivative_consistency_3d) {
     testSPHKernelFiniteDifference3D<pbf::sph::Poly6<3>>("Poly6");
     testSPHKernelFiniteDifference3D<pbf::sph::Spikey<3>>("Spikey");
+    testSPHKernelFiniteDifference3D<pbf::sph::CubicSpline<3>>("CubicSpline");
 }
 
 using testing::DensityGridFixture;

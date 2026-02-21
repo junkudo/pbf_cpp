@@ -4,6 +4,84 @@
 
 namespace pbf::sph {
 
+    float CubicSpline<2>::eval(Vec<2> const & rVec, const float h) {
+        const float r = rVec.length();
+        const float q = r / h;
+        if (q > 1.0f) {
+            return 0.0f;
+        }
+        // Renormalized for q <= 1 so the kernel integrates to 1 in 2D.
+        const float k = 40.0f / (7.0f * std::numbers::pi_v<float> * h * h);
+        if (q <= 0.5f) {
+            const float q2 = q * q;
+            const float q3 = q2 * q;
+            return k * (6.0f * q3 - 6.0f * q2 + 1.0f);
+        }
+        const float factor = 1.0f - q;
+        return k * (2.0f * factor * factor * factor);
+    }
+
+    float CubicSpline<2>::evalAtZero(const float h) {
+        return 40.0f / (7.0f * std::numbers::pi_v<float> * h * h);
+    }
+
+    Vec<2> CubicSpline<2>::deriv(Vec<2> const & rVec, const float h) {
+        const float r = rVec.length();
+        const float q = r / h;
+        if (r <= 1.0e-6f || q > 1.0f) {
+            return Vec<2>(0.0f, 0.0f);
+        }
+        // Renormalized for q <= 1 so the gradient matches the 2D kernel scaling.
+        const float k = 40.0f / (7.0f * std::numbers::pi_v<float> * h * h);
+        const float inv_rh = 1.0f / (r * h);
+        if (q <= 0.5f) {
+            const float q2 = q * q;
+            const float factor = k * (18.0f * q2 - 12.0f * q);
+            return rVec * (factor * inv_rh);
+        }
+        const float factor = 1.0f - q;
+        const float grad = k * (-6.0f * factor * factor);
+        return rVec * (grad * inv_rh);
+    }
+
+    float CubicSpline<3>::eval(Vec<3> const & rVec, const float h) {
+        const float r = rVec.length();
+        const float q = r / h;
+        if (q > 1.0f) {
+            return 0.0f;
+        }
+        const float k = 8.0f / (std::numbers::pi_v<float> * h * h * h);
+        if (q <= 0.5f) {
+            const float q2 = q * q;
+            const float q3 = q2 * q;
+            return k * (6.0f * q3 - 6.0f * q2 + 1.0f);
+        }
+        const float factor = 1.0f - q;
+        return k * (2.0f * factor * factor * factor);
+    }
+
+    float CubicSpline<3>::evalAtZero(const float h) {
+        return 8.0f / (std::numbers::pi_v<float> * h * h * h);
+    }
+
+    Vec<3> CubicSpline<3>::deriv(Vec<3> const & rVec, const float h) {
+        const float r = rVec.length();
+        const float q = r / h;
+        if (r <= 1.0e-6f || q > 1.0f) {
+            return Vec<3>(0.0f, 0.0f, 0.0f);
+        }
+        const float k = 8.0f / (std::numbers::pi_v<float> * h * h * h);
+        const float inv_rh = 1.0f / (r * h);
+        if (q <= 0.5f) {
+            const float q2 = q * q;
+            const float factor = k * (18.0f * q2 - 12.0f * q);
+            return rVec * (factor * inv_rh);
+        }
+        const float factor = 1.0f - q;
+        const float grad = k * (-6.0f * factor * factor);
+        return rVec * (grad * inv_rh);
+    }
+
     float Poly6<2>::eval(Vec<2> const & rVec, const float h) {
         float r = rVec.length();
         if (r > h)

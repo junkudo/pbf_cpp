@@ -38,6 +38,26 @@ namespace pbf::sph {
         static Vec<3> deriv(Vec<3> const & rVec, const float h);
     };
 
+    // Cubic spline kernel with compact support (q <= 1).
+    template <int Dim>
+    struct CubicSpline;
+
+    template <>
+    // 2D cubic spline kernel and gradient.
+    struct CubicSpline<2> {
+        static float eval(Vec<2> const & rVec, const float h);
+        static float evalAtZero(const float h);
+        static Vec<2> deriv(Vec<2> const & rVec, const float h);
+    };
+
+    template <>
+    // 3D cubic spline kernel and gradient.
+    struct CubicSpline<3> {
+        static float eval(Vec<3> const & rVec, const float h);
+        static float evalAtZero(const float h);
+        static Vec<3> deriv(Vec<3> const & rVec, const float h);
+    };
+
     template <int Dim, typename Kernel>
     float computeDensity(int self_index, float mass, float h,
         std::vector<int> const & neighbors,

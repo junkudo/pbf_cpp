@@ -21,6 +21,24 @@ TEST(ParticleSystem2DTests, InitializesGridWithExpectedCounts) {
     EXPECT_EQ(system.velocities_.size(), 6u);
 }
 
+TEST(ParticleSystem2DTests, InitializesFromExplicitPositions) {
+    pbf::PhysicsConfig config;
+    config.particleSpacing = 0.1f;
+
+    std::vector<pbf::vec2f> positions{
+        pbf::vec2f(0.1f, 0.2f),
+        pbf::vec2f(-0.1f, 0.5f)
+    };
+    pbf::ParticleSystem<2> system(positions, config);
+
+    ASSERT_EQ(system.getNumParticles(), 2);
+    EXPECT_EQ(system.positions_.size(), 2u);
+    EXPECT_EQ(system.positions_[1].x, positions[1].x);
+    EXPECT_EQ(system.positions_[1].y, positions[1].y);
+    EXPECT_EQ(system.velocities_[0].x, 0.0f);
+    EXPECT_EQ(system.velocities_[0].y, 0.0f);
+}
+
 TEST(ParticleSystem2DTests, PredictPositionsAdvancesWithVelocity) {
     pbf::PhysicsConfig config;
     config.particleSpacing = 0.1f;
@@ -67,6 +85,22 @@ TEST(ParticleSystem2DTests, GravityUpdatesVelocityAlongY) {
     system.updateVelocityFromGravity();
 
     EXPECT_FLOAT_EQ(system.velocities_[0].y, -config.gravity * config.timeStep);
+}
+
+TEST(ParticleSystem2DTests, JitteredGridHelperGeneratesPositions) {
+    pbf::PhysicsConfig config;
+    config.particleSpacing = 0.1f;
+    config.jitterFactor = 0.0f;
+
+    const std::array<int, 2> counts{2, 2};
+    const auto origin = pbf::vec2f(1.0f, -1.0f);
+    auto positions = pbf::ParticleSystem<2>::createJitteredGridPositions(counts, config, origin);
+
+    ASSERT_EQ(positions.size(), 4u);
+    EXPECT_FLOAT_EQ(positions[0].x, origin.x);
+    EXPECT_FLOAT_EQ(positions[0].y, origin.y);
+    EXPECT_FLOAT_EQ(positions[1].x, origin.x + config.particleSpacing);
+    EXPECT_FLOAT_EQ(positions[2].y, origin.y + config.particleSpacing);
 }
 
 TEST(ParticleSystem3DTests, InitializesGridWithExpectedCounts) {

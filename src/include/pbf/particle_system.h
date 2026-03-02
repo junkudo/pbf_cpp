@@ -22,19 +22,46 @@ public:
     int num_particles_;
     PhysicsConfig config_;
 
+    ParticleSystem(const std::vector<VecType>& positions, const PhysicsConfig& config)
+        : num_particles_(static_cast<int>(positions.size())),
+          config_(config),
+          positions_(positions),
+          velocities_(positions.size(), VecType::zero()),
+          lambdas_(positions.size(), 0.0f) {}
+
     ParticleSystem(const std::array<int, Dim>& counts,
                    const PhysicsConfig& config,
                    const VecType& origin_offset = VecType::zero())
-        : num_particles_(1), config_(config) {
+        : ParticleSystem(createJitteredGridPositions(counts, config, origin_offset), config) {}
+
+    static std::vector<VecType> createJitteredGridPositions(const std::array<int, Dim>& counts,
+                                                           const PhysicsConfig& config,
+                                                           const VecType& origin_offset = VecType::zero()) {
+        int num_particles = 1;
         for (int dim = 0; dim < Dim; ++dim) {
-            num_particles_ *= counts[dim];
+            num_particles *= counts[dim];
         }
 
-        positions_.resize(num_particles_);
-        velocities_.resize(num_particles_);
-        lambdas_.resize(num_particles_);
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> jitter(-config.jitterFactor * config.particleSpacing,
+                                                     config.jitterFactor * config.particleSpacing);
 
-        initializeJitteredGrid(counts, origin_offset);
+        std::vector<VecType> positions;
+        positions.resize(num_particles, VecType::zero());
+
+        for (int i = 0; i < num_particles; ++i) {
+            VecType position = VecType::zero();
+            int remainder = i;
+            for (int dim = 0; dim < Dim; ++dim) {
+                const int index = remainder % counts[dim];
+                remainder /= counts[dim];
+                position[dim] = index * config.particleSpacing + jitter(gen) + origin_offset[dim];
+            }
+            positions[i] = position;
+        }
+
+        return positions;
     }
 
     // Apply gravity in the +Y axis direction (index 1).
@@ -67,25 +94,7 @@ public:
     int getNumParticles() const { return num_particles_; }
 
 private:
-    void initializeJitteredGrid(const std::array<int, Dim>& counts,
-                                const VecType& origin_offset) {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> jitter(-config_.jitterFactor * config_.particleSpacing,
-                                                     config_.jitterFactor * config_.particleSpacing);
-
-        for (int i = 0; i < num_particles_; ++i) {
-            VecType position = VecType::zero();
-            int remainder = i;
-            for (int dim = 0; dim < Dim; ++dim) {
-                const int index = remainder % counts[dim];
-                remainder /= counts[dim];
-                position[dim] = index * config_.particleSpacing + jitter(gen) + origin_offset[dim];
-            }
-            positions_[i] = position;
-            velocities_[i] = VecType::zero();
-        }
-    }
+    static_assert(Dim > 0, "ParticleSystem requires a positive dimension");
 };
 
 }

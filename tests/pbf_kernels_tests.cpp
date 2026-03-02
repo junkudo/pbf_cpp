@@ -103,27 +103,20 @@ TEST_F(DensityGridFixture, constraint_gradient) {
     }
 }
 
-TEST_F(DensityGridFixture, lambda_computation_different_kernels) {
-    using ConstraintKernel = pbf::sph::Poly6<2>;  // Same as Python constraint calculation
-    using GradientKernel = pbf::sph::Spikey<2>;   // Same as Python gradient calculation
+TEST_F(DensityGridFixture, lambda_clamps_negative_constraint) {
+    using ConstraintKernel = pbf::sph::Poly6<2>;
+    using GradientKernel = pbf::sph::Spikey<2>;
 
     float mass = 1.2f;
-    float rest_density = 0.95f;
     float epsilon = 1.0e-6f;
 
-    // Get neighbors for particle 0
     std::vector<int> neighbors = testing::get_neighbors_slow<2>(0, positions, h);
+    float density = pbf::sph::computeDensity<2, ConstraintKernel>(0, mass, h, neighbors, positions);
+    float rest_density = density * 1.1f;
 
-    // Compute lambda using different kernels (Poly6 for constraint, Spikey for gradients)
-    float lambda = pbf::sph::computeLambda<2, ConstraintKernel, GradientKernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
-
-    // Basic validation - lambda should be finite
-    EXPECT_TRUE(std::isfinite(lambda));
-
-    // Validate mathematical correctness for the mixed-kernel version
     float constraint = pbf::sph::computeDensityConstraint<2, ConstraintKernel>(
         0, rest_density, mass, h, neighbors, positions);
+    EXPECT_LT(constraint, 0.0f);
 
     std::vector<vec2f> gradients;
     pbf::sph::computeDensityConstraintGradients<2, GradientKernel>(
@@ -133,10 +126,45 @@ TEST_F(DensityGridFixture, lambda_computation_different_kernels) {
     for (const auto& grad : gradients) {
         sum_grad_sq += grad.dot(grad);
     }
+    float expected_unclamped = -constraint / (sum_grad_sq + epsilon);
+    // Negative constraint would produce a positive lambda, but we clamp to zero.
+    EXPECT_GT(expected_unclamped, 0.0f);
+
+    float lambda = pbf::sph::computeLambda<2, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, positions);
+    EXPECT_NEAR(lambda, 0.0f, 1.0e-6f);
+}
+
+TEST_F(DensityGridFixture, lambda_keeps_positive_constraint) {
+    using ConstraintKernel = pbf::sph::Poly6<2>;
+    using GradientKernel = pbf::sph::Spikey<2>;
+
+    float mass = 1.2f;
+    float epsilon = 1.0e-6f;
+
+    std::vector<int> neighbors = testing::get_neighbors_slow<2>(0, positions, h);
+    float density = pbf::sph::computeDensity<2, ConstraintKernel>(0, mass, h, neighbors, positions);
+    float rest_density = density * 0.5f;
+
+    float constraint = pbf::sph::computeDensityConstraint<2, ConstraintKernel>(
+        0, rest_density, mass, h, neighbors, positions);
+    EXPECT_GT(constraint, 0.0f);
+
+    std::vector<vec2f> gradients;
+    pbf::sph::computeDensityConstraintGradients<2, GradientKernel>(
+        0, rest_density, mass, h, neighbors, positions, gradients);
+
+    float sum_grad_sq = 0.0f;
+    for (const auto& grad : gradients) {
+        sum_grad_sq += grad.dot(grad);
+    }
+    // Positive constraint should keep the negative lambda unclamped.
     float expected_lambda = -constraint / (sum_grad_sq + epsilon);
 
-    // Validate that computed lambda matches expected value
-    EXPECT_NEAR(lambda, expected_lambda, 1.0e-4f);
+    float lambda = pbf::sph::computeLambda<2, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, positions);
+    EXPECT_LT(lambda, 0.0f);
+    EXPECT_NEAR(lambda, expected_lambda, 1.0e-6f);
 }
 
 TEST_F(DensityGridFixture, position_correction_matrix_vector_test) {
@@ -294,23 +322,51 @@ TEST_F(DensityGridFixture3D, constraint_gradient_3d) {
     }
 }
 
-TEST_F(DensityGridFixture3D, lambda_computation_different_kernels_3d) {
+TEST_F(DensityGridFixture3D, lambda_clamps_negative_constraint_3d) {
     using ConstraintKernel = pbf::sph::Poly6<3>;
     using GradientKernel = pbf::sph::Spikey<3>;
 
     float mass = 1.2f;
-    float rest_density = 0.95f;
     float epsilon = 1.0e-6f;
 
     std::vector<int> neighbors = testing::get_neighbors_slow<3>(0, positions, h);
-
-    float lambda = pbf::sph::computeLambda<3, ConstraintKernel, GradientKernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
-
-    EXPECT_TRUE(std::isfinite(lambda));
+    float density = pbf::sph::computeDensity<3, ConstraintKernel>(0, mass, h, neighbors, positions);
+    float rest_density = density * 1.1f;
 
     float constraint = pbf::sph::computeDensityConstraint<3, ConstraintKernel>(
         0, rest_density, mass, h, neighbors, positions);
+    EXPECT_LT(constraint, 0.0f);
+
+    std::vector<pbf::vec3f> gradients;
+    pbf::sph::computeDensityConstraintGradients<3, GradientKernel>(
+        0, rest_density, mass, h, neighbors, positions, gradients);
+
+    float sum_grad_sq = 0.0f;
+    for (const auto& grad : gradients) {
+        sum_grad_sq += grad.dot(grad);
+    }
+    float expected_unclamped = -constraint / (sum_grad_sq + epsilon);
+    EXPECT_GT(expected_unclamped, 0.0f);
+
+    float lambda = pbf::sph::computeLambda<3, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, positions);
+    EXPECT_NEAR(lambda, 0.0f, 1.0e-6f);
+}
+
+TEST_F(DensityGridFixture3D, lambda_keeps_positive_constraint_3d) {
+    using ConstraintKernel = pbf::sph::Poly6<3>;
+    using GradientKernel = pbf::sph::Spikey<3>;
+
+    float mass = 1.2f;
+    float epsilon = 1.0e-6f;
+
+    std::vector<int> neighbors = testing::get_neighbors_slow<3>(0, positions, h);
+    float density = pbf::sph::computeDensity<3, ConstraintKernel>(0, mass, h, neighbors, positions);
+    float rest_density = density * 0.5f;
+
+    float constraint = pbf::sph::computeDensityConstraint<3, ConstraintKernel>(
+        0, rest_density, mass, h, neighbors, positions);
+    EXPECT_GT(constraint, 0.0f);
 
     std::vector<pbf::vec3f> gradients;
     pbf::sph::computeDensityConstraintGradients<3, GradientKernel>(
@@ -322,7 +378,10 @@ TEST_F(DensityGridFixture3D, lambda_computation_different_kernels_3d) {
     }
     float expected_lambda = -constraint / (sum_grad_sq + epsilon);
 
-    EXPECT_NEAR(lambda, expected_lambda, 1.0e-4f);
+    float lambda = pbf::sph::computeLambda<3, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, positions);
+    EXPECT_LT(lambda, 0.0f);
+    EXPECT_NEAR(lambda, expected_lambda, 1.0e-6f);
 }
 
 TEST_F(DensityGridFixture3D, position_correction_matrix_vector_test_3d) {

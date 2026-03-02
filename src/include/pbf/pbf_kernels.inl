@@ -52,6 +52,9 @@ namespace pbf::sph {
             float constraint = computeDensityConstraint<Dim, ConstraintKernel>(
                 self_index, rest_density, mass, h, neighbors, positions);
 
+            // Clamp negative density constraints to zero to match FluidDemo and avoid surface clumping.
+            constraint = std::max(constraint, 0.0f);
+
             // Compute constraint gradients using gradient kernel
             std::vector<Vec<Dim>> gradients;
             computeDensityConstraintGradients<Dim, GradientKernel>(

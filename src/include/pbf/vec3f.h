@@ -35,6 +35,11 @@ struct vec3f
         return { x - o.x, y - o.y, z - o.z };
     }
 
+    constexpr vec3f operator-() const
+    {
+        return { -x, -y, -z };
+    }
+
     constexpr vec3f operator*(float s) const
     {
         return { x * s, y * s, z * s };
@@ -105,6 +110,7 @@ struct vec3f
     {
         return vec3f(0.0f, 0.0f, 0.0f);
     }
+
 };
 
 constexpr vec3f operator*(float s, const vec3f& v)

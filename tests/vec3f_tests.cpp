@@ -56,6 +56,20 @@ TEST(vec3f, arithmetic_operators) {
     EXPECT_FLOAT_EQ(divided.z, -0.5f);
 }
 
+TEST(vec3f, unary_negation) {
+    vec3f v(1.5f, -2.5f, 3.25f);
+    vec3f neg = -v;
+    EXPECT_FLOAT_EQ(neg.x, -1.5f);
+    EXPECT_FLOAT_EQ(neg.y, 2.5f);
+    EXPECT_FLOAT_EQ(neg.z, -3.25f);
+
+    vec3f zero = vec3f::zero();
+    vec3f neg_zero = -zero;
+    EXPECT_FLOAT_EQ(neg_zero.x, 0.0f);
+    EXPECT_FLOAT_EQ(neg_zero.y, 0.0f);
+    EXPECT_FLOAT_EQ(neg_zero.z, 0.0f);
+}
+
 TEST(vec3f, compound_assignment) {
     vec3f v(1.0f, -2.0f, 3.0f);
     vec3f w(0.5f, 4.0f, -1.5f);

@@ -34,6 +34,11 @@ struct vec2f
         return { x - o.x, y - o.y };
     }
 
+    constexpr vec2f operator-() const
+    {
+        return { -x, -y };
+    }
+
     constexpr vec2f operator*(float s) const
     {
         return { x * s, y * s };
@@ -100,6 +105,7 @@ struct vec2f
     {
         return vec2f(0.0f, 0.0f);
     }
+
 };
 
 

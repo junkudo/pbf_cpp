@@ -46,6 +46,18 @@ TEST(vec2f, arithmetic_operators) {
     EXPECT_FLOAT_EQ(divided.y, 1.0f);
 }
 
+TEST(vec2f, unary_negation) {
+    vec2f v(1.5f, -2.5f);
+    vec2f neg = -v;
+    EXPECT_FLOAT_EQ(neg.x, -1.5f);
+    EXPECT_FLOAT_EQ(neg.y, 2.5f);
+
+    vec2f zero = vec2f::zero();
+    vec2f neg_zero = -zero;
+    EXPECT_FLOAT_EQ(neg_zero.x, 0.0f);
+    EXPECT_FLOAT_EQ(neg_zero.y, 0.0f);
+}
+
 TEST(vec2f, compound_assignment) {
     vec2f v(1.0f, -2.0f);
     vec2f w(0.5f, 4.0f);

@@ -44,7 +44,7 @@ std::vector<int> SpatialHash<Dim>::getNeighbors(int particle_index) const {
             neighbors.push_back(candidate_index);
         }
     }
-
+    std::sort(neighbors.begin(), neighbors.end());
     return neighbors;
 }
 

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cassert>
+#include <iostream>
 
 namespace pbf {
 struct vec3f
@@ -109,6 +110,11 @@ struct vec3f
     static vec3f zero()
     {
         return vec3f(0.0f, 0.0f, 0.0f);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const vec3f& v) {
+        os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+        return os;
     }
 
 };

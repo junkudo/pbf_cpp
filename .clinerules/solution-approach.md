@@ -6,6 +6,7 @@ This rule establishes guidelines for avoiding over-engineering solutions and ens
 - Avoid adding unnecessary abstractions, patterns, or architectural complexity without user approval
 - When multiple solution approaches are possible, present the simplest option first
 - Only propose complex solutions when they are clearly necessary for the task requirements
+- Prefer building the minimal set of executables or targets needed to validate changes
 
 ## When to ask for user input
 - Before implementing complex design patterns (e.g., factory, observer, strategy)

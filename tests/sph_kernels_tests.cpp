@@ -474,3 +474,66 @@ TEST_F(DensityGridFixture3D, density_geometric_invariants_3d) {
         EXPECT_NEAR(density, densities.at(i), tol);
     }
 }
+
+TEST(sph_kernels, xsph_viscosity_smooths_velocity) {
+    using Kernel = pbf::sph::CubicSpline<2>;
+    const float h = 1.0f;
+    const float mass = 2.0f;
+    const float viscosity = 0.02f;
+
+    std::vector<pbf::vec2f> positions{
+        pbf::vec2f(0.0f, 0.0f),
+        pbf::vec2f(0.5f, 0.0f)
+    };
+    std::vector<pbf::vec2f> velocities{
+        pbf::vec2f(1.0f, 0.0f),
+        pbf::vec2f(-1.0f, 0.0f)
+    };
+    std::vector<std::vector<int>> neighbors{{1}, {0}};
+
+    const float density0 = pbf::sph::computeDensity<2, Kernel>(0, mass, h, neighbors[0], positions);
+    const float density1 = pbf::sph::computeDensity<2, Kernel>(1, mass, h, neighbors[1], positions);
+    const float weight = Kernel::eval(positions[0] - positions[1], h);
+    const pbf::vec2f delta0 = -(velocities[0] - velocities[1]) * (mass / density1) * weight;
+    const pbf::vec2f delta1 = -(velocities[1] - velocities[0]) * (mass / density0) * weight;
+    const pbf::vec2f expected0 = velocities[0] + viscosity * delta0;
+    const pbf::vec2f expected1 = velocities[1] + viscosity * delta1;
+
+    pbf::sph::computeXsphViscosity<2, Kernel>(viscosity, mass, h, positions, neighbors, velocities);
+
+    const float tol = 1.0e-4f;
+    EXPECT_NEAR(velocities[0].x, expected0.x, tol);
+    EXPECT_NEAR(velocities[0].y, expected0.y, tol);
+    EXPECT_NEAR(velocities[1].x, expected1.x, tol);
+    EXPECT_NEAR(velocities[1].y, expected1.y, tol);
+    EXPECT_LT(std::abs(velocities[0].x), 1.0f);
+    EXPECT_LT(std::abs(velocities[1].x), 1.0f);
+}
+
+TEST(sph_kernels, xsph_viscosity_zero_no_change) {
+    using Kernel = pbf::sph::CubicSpline<2>;
+    const float h = 1.0f;
+    const float mass = 2.0f;
+    const float viscosity = 0.0f;
+
+    std::vector<pbf::vec2f> positions{
+        pbf::vec2f(0.0f, 0.0f),
+        pbf::vec2f(0.5f, 0.0f)
+    };
+    std::vector<pbf::vec2f> velocities{
+        pbf::vec2f(1.0f, 0.0f),
+        pbf::vec2f(-1.0f, 0.0f)
+    };
+    std::vector<std::vector<int>> neighbors{{1}, {0}};
+
+    const auto expected0 = velocities[0];
+    const auto expected1 = velocities[1];
+
+    pbf::sph::computeXsphViscosity<2, Kernel>(viscosity, mass, h, positions, neighbors, velocities);
+
+    const float tol = 1.0e-6f;
+    EXPECT_NEAR(velocities[0].x, expected0.x, tol);
+    EXPECT_NEAR(velocities[0].y, expected0.y, tol);
+    EXPECT_NEAR(velocities[1].x, expected1.x, tol);
+    EXPECT_NEAR(velocities[1].y, expected1.y, tol);
+}

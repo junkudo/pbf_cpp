@@ -62,6 +62,13 @@ namespace pbf::sph {
     float computeDensity(int self_index, float mass, float h,
         std::vector<int> const & neighbors,
         std::vector<Vec<Dim>> const & positions);
+
+    // Apply XSPH viscosity update to velocities
+    template <int Dim, typename Kernel>
+    void computeXsphViscosity(float viscosity, float mass, float h,
+        std::vector<Vec<Dim>> const& positions,
+        std::vector<std::vector<int>> const& neighbors,
+        std::vector<Vec<Dim>>& velocities);
 }
 
 #include "pbf/sph_kernels.inl"

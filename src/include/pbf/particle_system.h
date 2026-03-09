@@ -82,11 +82,12 @@ public:
         return predicted;
     }
 
-    // Apply position corrections and update velocities from them.
+    // Apply position corrections and update velocities from full displacement.
     void updatePositions(const std::vector<VecType>& corrections) {
         for (int i = 0; i < num_particles_; ++i) {
-            positions_[i] += corrections[i];
-            velocities_[i] = corrections[i] / config_.timeStep;
+            const VecType previous_position = positions_[i];
+            positions_[i] += velocities_[i] * config_.timeStep + corrections[i];
+            velocities_[i] = (positions_[i] - previous_position) / config_.timeStep;
         }
     }
 

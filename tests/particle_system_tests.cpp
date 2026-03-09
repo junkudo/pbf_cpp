@@ -64,13 +64,16 @@ TEST(ParticleSystem2DTests, UpdatePositionsAppliesCorrections) {
     const std::array<int, 2> counts{1, 1};
     pbf::ParticleSystem<2> system(counts, config, pbf::vec2f::zero());
 
+    system.velocities_[0] = pbf::vec2f(0.5f, -0.25f);
     std::vector<pbf::vec2f> corrections{pbf::vec2f(0.1f, -0.2f)};
     system.updatePositions(corrections);
 
-    EXPECT_FLOAT_EQ(system.positions_[0].x, 0.1f);
-    EXPECT_FLOAT_EQ(system.positions_[0].y, -0.2f);
-    EXPECT_FLOAT_EQ(system.velocities_[0].x, corrections[0].x / config.timeStep);
-    EXPECT_FLOAT_EQ(system.velocities_[0].y, corrections[0].y / config.timeStep);
+    const float expected_x = 0.1f + 0.5f * config.timeStep;
+    const float expected_y = -0.2f + (-0.25f) * config.timeStep;
+    EXPECT_FLOAT_EQ(system.positions_[0].x, expected_x);
+    EXPECT_FLOAT_EQ(system.positions_[0].y, expected_y);
+    EXPECT_FLOAT_EQ(system.velocities_[0].x, expected_x / config.timeStep);
+    EXPECT_FLOAT_EQ(system.velocities_[0].y, expected_y / config.timeStep);
 }
 
 TEST(ParticleSystem2DTests, GravityUpdatesVelocityAlongY) {
@@ -143,15 +146,19 @@ TEST(ParticleSystem3DTests, UpdatePositionsAppliesCorrections) {
     const std::array<int, 3> counts{1, 1, 1};
     pbf::ParticleSystem<3> system(counts, config, pbf::vec3f::zero());
 
+    system.velocities_[0] = pbf::vec3f(0.1f, -0.2f, 0.05f);
     std::vector<pbf::vec3f> corrections{pbf::vec3f(0.2f, -0.1f, 0.3f)};
     system.updatePositions(corrections);
 
-    EXPECT_FLOAT_EQ(system.positions_[0].x, 0.2f);
-    EXPECT_FLOAT_EQ(system.positions_[0].y, -0.1f);
-    EXPECT_FLOAT_EQ(system.positions_[0].z, 0.3f);
-    EXPECT_FLOAT_EQ(system.velocities_[0].x, corrections[0].x / config.timeStep);
-    EXPECT_FLOAT_EQ(system.velocities_[0].y, corrections[0].y / config.timeStep);
-    EXPECT_FLOAT_EQ(system.velocities_[0].z, corrections[0].z / config.timeStep);
+    const float expected_x_3d = 0.2f + 0.1f * config.timeStep;
+    const float expected_y_3d = -0.1f + (-0.2f) * config.timeStep;
+    const float expected_z_3d = 0.3f + 0.05f * config.timeStep;
+    EXPECT_FLOAT_EQ(system.positions_[0].x, expected_x_3d);
+    EXPECT_FLOAT_EQ(system.positions_[0].y, expected_y_3d);
+    EXPECT_FLOAT_EQ(system.positions_[0].z, expected_z_3d);
+    EXPECT_FLOAT_EQ(system.velocities_[0].x, expected_x_3d / config.timeStep);
+    EXPECT_FLOAT_EQ(system.velocities_[0].y, expected_y_3d / config.timeStep);
+    EXPECT_FLOAT_EQ(system.velocities_[0].z, expected_z_3d / config.timeStep);
 }
 
 TEST(ParticleSystem3DTests, GravityUpdatesVelocityAlongY) {

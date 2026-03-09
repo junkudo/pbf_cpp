@@ -17,6 +17,9 @@ This rule captures coding hygiene practices discovered during recent SPH kernel/
 ## Headers must include what they use
 - Public headers should include required standard headers directly (e.g., `<random>`), not rely on transitive includes from other files.
 
+## Output parameters go last
+- When functions accept output parameters (non-const refs or pointers), place those parameters at the end of the argument list.
+
 ## Template headers should use .inl files for definitions
 - For templated interfaces, keep declarations in the `.h` and move definitions into a matching `.inl` file.
 - Include the `.inl` at the bottom of the header to ensure template definitions are visible to all translation units.

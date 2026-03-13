@@ -48,6 +48,13 @@ public:
     std::vector<int> getNeighbors(int particle_index) const;
 
     /**
+     * Get neighbors for an arbitrary query position.
+     * @param query_pos Position to find neighbors for
+     * @return Vector of neighbor particle indices
+     */
+    std::vector<int> getNeighborsForPosition(const Vec& query_pos) const;
+
+    /**
      * Get neighbors for all particles (batch operation)
      * @return Vector of neighbor lists, one per particle
      */

@@ -49,6 +49,24 @@ std::vector<int> SpatialHash<Dim>::getNeighbors(int particle_index) const {
 }
 
 template<int Dim>
+std::vector<int> SpatialHash<Dim>::getNeighborsForPosition(const Vec& query_pos) const {
+    const CellCoord center_cell = worldToCell(query_pos);
+    std::vector<int> candidates = getNeighborsInNeighborhood(center_cell);
+
+    std::vector<int> neighbors;
+    neighbors.reserve(candidates.size());
+
+    for (int candidate_index : candidates) {
+        if (isWithinRange(query_pos, candidate_index)) {
+            neighbors.push_back(candidate_index);
+        }
+    }
+
+    std::sort(neighbors.begin(), neighbors.end());
+    return neighbors;
+}
+
+template<int Dim>
 std::vector<std::vector<int>> SpatialHash<Dim>::getAllNeighbors() const {
     std::vector<std::vector<int>> all_neighbors(positions_.size());
 

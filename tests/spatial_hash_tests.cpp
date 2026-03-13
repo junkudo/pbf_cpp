@@ -109,6 +109,19 @@ TEST_F(SpatialHashTest, SingleParticle) {
     EXPECT_TRUE(all_neighbors[0].empty());
 }
 
+TEST_F(SpatialHashTest, PointQueryMatchesParticleNeighbors) {
+    std::vector<pbf::vec2f> positions = {{5.0f, 5.0f}, {5.4f, 5.0f}, {7.0f, 5.0f}};
+    pbf::vec2f min_bounds(0.0f, 0.0f);
+    pbf::vec2f max_bounds(domain_size, domain_size);
+    pbf::SpatialHash<2> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    auto neighbors_from_query = spatial_hash.getNeighborsForPosition(positions[0]);
+    std::vector<int> expected_neighbors{0, 1};
+
+    EXPECT_EQ(neighbors_from_query, expected_neighbors);
+}
+
 TEST_F(SpatialHashTest, TwoParticlesWithinRange) {
     std::vector<pbf::vec2f> positions = {{5.0f, 5.0f}, {5.5f, 5.0f}};
     pbf::vec2f min_bounds(0.0f, 0.0f);
@@ -306,6 +319,19 @@ TEST_F(SpatialHash3DTest, SingleParticle) {
     auto all_neighbors = spatial_hash.getAllNeighbors();
     EXPECT_EQ(all_neighbors.size(), 1);
     EXPECT_TRUE(all_neighbors[0].empty());
+}
+
+TEST_F(SpatialHash3DTest, PointQueryMatchesParticleNeighbors) {
+    std::vector<pbf::vec3f> positions = {{2.0f, 2.0f, 2.0f}, {2.6f, 2.0f, 2.0f}, {4.0f, 2.0f, 2.0f}};
+    pbf::vec3f min_bounds(0.0f, 0.0f, 0.0f);
+    pbf::vec3f max_bounds(domain_size, domain_size, domain_size);
+    pbf::SpatialHash<3> spatial_hash(min_bounds, max_bounds, h);
+    spatial_hash.update(positions);
+
+    auto neighbors_from_query = spatial_hash.getNeighborsForPosition(positions[0]);
+    std::vector<int> expected_neighbors{0, 1};
+
+    EXPECT_EQ(neighbors_from_query, expected_neighbors);
 }
 
 TEST_F(SpatialHash3DTest, TwoParticlesWithinRange) {

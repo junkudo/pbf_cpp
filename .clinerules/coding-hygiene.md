@@ -32,6 +32,10 @@ This rule captures coding hygiene practices discovered during recent SPH kernel/
 - New code should include succinct comments explaining intent or non-obvious behavior.
 - Avoid verbose commentary; prioritize clarity with minimal words.
 
+## Avoid literal tab escape sequences in patches
+- Do not include literal "\\t" escape sequences in patch edits; use real spaces or tabs.
+- Prefer small, targeted patches to reduce accidental escape insertion.
+
 ## Renames must be committed separately
 - When renaming files, commit the rename separately before applying any content changes.
 - Avoid mixing renames with modifications in the same commit.

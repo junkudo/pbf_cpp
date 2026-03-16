@@ -21,13 +21,129 @@ TEST_F(DensityGridFixture, density_constraint)
     std::vector<int> neighbors;
     float rest_density = 0.95f;
     float density = pbf::sph::computeDensity<2, Kernel>(0, mass, h, neighbors, positions);
-    float density_constraint = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float density_constraint = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
     float tol = 1.0e-4f;
     EXPECT_NEAR(density_constraint, density / rest_density - 1.0f, tol);
 }
 
+TEST_F(DensityGridFixture, boundary_density_contribution) {
+    using Kernel = pbf::sph::Poly6<2>;
+
+    std::vector<vec2f> boundary_positions;
+    boundary_positions.push_back(positions[0] + vec2f(0.5f, 0.0f));
+    std::vector<float> boundary_psi{1.5f};
+    std::vector<int> boundary_neighbors{0};
+
+    float density = pbf::sph::computeConstraintBoundary<2, Kernel>(
+        0, h, boundary_neighbors, positions, boundary_positions, boundary_psi);
+    float expected_density = boundary_psi[0] * Kernel::eval(positions[0] - boundary_positions[0], h);
+
+    EXPECT_NEAR(density, expected_density, 1.0e-6f);
+}
+
+TEST_F(DensityGridFixture, boundary_gradient_sum_sq) {
+    using GradientKernel = pbf::sph::Spikey<2>;
+
+    std::vector<vec2f> boundary_positions;
+    boundary_positions.push_back(positions[0] + vec2f(0.5f, 0.0f));
+    std::vector<float> boundary_psi{2.0f};
+    std::vector<int> boundary_neighbors{0};
+    float rest_density = 1.0f;
+
+    std::vector<vec2f> boundary_gradients;
+    pbf::sph::detail::computeConstraintGradientsBoundary<2, GradientKernel>(
+        0, rest_density, h, boundary_neighbors, positions, boundary_positions, boundary_psi,
+        boundary_gradients);
+
+    vec2f grad_i = vec2f::zero();
+    float sum_grad_sq = 0.0f;
+    for (const auto& gradC_j : boundary_gradients) {
+        sum_grad_sq += gradC_j.dot(gradC_j);
+        grad_i -= gradC_j;
+    }
+    sum_grad_sq += grad_i.dot(grad_i);
+
+    vec2f gradW = GradientKernel::deriv(positions[0] - boundary_positions[0], h);
+    vec2f gradC_j = -(boundary_psi[0] / rest_density) * gradW;
+
+    float expected_sum = 2.0f * gradC_j.dot(gradC_j);
+    EXPECT_NEAR(sum_grad_sq, expected_sum, 1.0e-6f);
+    EXPECT_NEAR(grad_i.x, -gradC_j.x, 1.0e-6f);
+    EXPECT_NEAR(grad_i.y, -gradC_j.y, 1.0e-6f);
+}
+
+TEST_F(DensityGridFixture, boundary_position_correction) {
+    using GradientKernel = pbf::sph::Spikey<2>;
+
+    std::vector<vec2f> boundary_positions;
+    boundary_positions.push_back(positions[0] + vec2f(0.5f, 0.0f));
+    std::vector<float> boundary_psi{1.25f};
+    std::vector<int> boundary_neighbors{0};
+    float rest_density = 1.0f;
+    float lambda_i = 0.75f;
+
+    vec2f correction = vec2f::zero();
+    pbf::sph::computePositionCorrectionBoundary<2, GradientKernel>(
+        0, rest_density, h, boundary_neighbors, positions, boundary_positions, boundary_psi,
+        lambda_i, correction);
+
+    vec2f gradW = GradientKernel::deriv(positions[0] - boundary_positions[0], h);
+    vec2f gradC_j = -(boundary_psi[0] / rest_density) * gradW;
+    vec2f expected_correction = -lambda_i * gradC_j;
+
+    EXPECT_NEAR(correction.x, expected_correction.x, 1.0e-6f);
+    EXPECT_NEAR(correction.y, expected_correction.y, 1.0e-6f);
+}
+
+TEST_F(DensityGridFixture, boundary_constraint_gradient_fd) {
+    using Kernel = pbf::sph::Poly6<2>;
+
+    std::vector<vec2f> boundary_positions;
+    boundary_positions.push_back(positions[0] + vec2f(0.5f, 0.0f));
+    std::vector<float> boundary_psi{1.25f};
+    std::vector<int> boundary_neighbors{0};
+    float rest_density = 1.0f;
+
+    std::vector<vec2f> analytical_gradients;
+    pbf::sph::detail::computeConstraintGradientsBoundary<2, Kernel>(
+        0, rest_density, h, boundary_neighbors, positions, boundary_positions, boundary_psi,
+        analytical_gradients);
+
+    std::vector<vec2f> fd_gradients(boundary_neighbors.size());
+    const float epsilon = 1.0e-3f;
+
+    positions[0].x += epsilon;
+    float density_plus_x = pbf::sph::computeConstraintBoundary<2, Kernel>(
+        0, h, boundary_neighbors, positions, boundary_positions, boundary_psi);
+    positions[0].x -= 2.0f * epsilon;
+    float density_minus_x = pbf::sph::computeConstraintBoundary<2, Kernel>(
+        0, h, boundary_neighbors, positions, boundary_positions, boundary_psi);
+    positions[0].x += epsilon;
+
+    positions[0].y += epsilon;
+    float density_plus_y = pbf::sph::computeConstraintBoundary<2, Kernel>(
+        0, h, boundary_neighbors, positions, boundary_positions, boundary_psi);
+    positions[0].y -= 2.0f * epsilon;
+    float density_minus_y = pbf::sph::computeConstraintBoundary<2, Kernel>(
+        0, h, boundary_neighbors, positions, boundary_positions, boundary_psi);
+    positions[0].y += epsilon;
+
+    vec2f fd_grad_i = vec2f::zero();
+    fd_grad_i.x = (density_plus_x - density_minus_x) / (2.0f * epsilon * rest_density);
+    fd_grad_i.y = (density_plus_y - density_minus_y) / (2.0f * epsilon * rest_density);
+
+    for (size_t k = 0; k < boundary_neighbors.size(); ++k) {
+        fd_gradients[k] = -fd_grad_i;
+    }
+
+    for (size_t k = 0; k < boundary_neighbors.size(); ++k) {
+        EXPECT_NEAR(analytical_gradients[k].x, fd_gradients[k].x, 1.0e-2f);
+        EXPECT_NEAR(analytical_gradients[k].y, fd_gradients[k].y, 1.0e-2f);
+    }
+}
+
 TEST_F(DensityGridFixture, constraint_gradient) {
-    using Kernel = pbf::sph::Poly6<2>;  // Same kernel as computeDensityConstraint test
+    using Kernel = pbf::sph::Poly6<2>;  // Same kernel as computeConstraint test
 
     float mass = 1.2f;
     float rest_density = 0.95f;
@@ -38,7 +154,7 @@ TEST_F(DensityGridFixture, constraint_gradient) {
 
     // Compute analytical gradients
     std::vector<vec2f> analytical_gradients;
-    pbf::sph::computeDensityConstraintGradients<2, Kernel>(
+    pbf::sph::detail::computeConstraintGradients<2, Kernel>(
         0, rest_density, mass, h, neighbors, positions, analytical_gradients);
 
     // Compute finite difference gradients
@@ -51,16 +167,16 @@ TEST_F(DensityGridFixture, constraint_gradient) {
     // Compute finite difference for self-gradient (index 0)
     // Perturb in +x direction
     positions[0].x += epsilon;
-    float c_plus_x = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_plus_x = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].x -= 2 * epsilon;
-    float c_minus_x = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_minus_x = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].x += epsilon;  // Restore
 
     // Perturb in +y direction
     positions[0].y += epsilon;
-    float c_plus_y = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_plus_y = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].y -= 2 * epsilon;
-    float c_minus_y = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_minus_y = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].y += epsilon;  // Restore
 
     fd_gradients[0].x = (c_plus_x - c_minus_x) / (2 * epsilon);
@@ -71,16 +187,16 @@ TEST_F(DensityGridFixture, constraint_gradient) {
         int neighbor_index = neighbors[k];
         // Perturb neighbor in +x direction
         positions[neighbor_index].x += epsilon;
-        c_plus_x = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_plus_x = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].x -= 2 * epsilon;
-        c_minus_x = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_minus_x = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].x += epsilon;  // Restore
 
         // Perturb neighbor in +y direction
         positions[neighbor_index].y += epsilon;
-        c_plus_y = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_plus_y = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].y -= 2 * epsilon;
-        c_minus_y = pbf::sph::computeDensityConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_minus_y = pbf::sph::computeConstraint<2, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].y += epsilon;  // Restore
 
         fd_gradients[k + 1].x = (c_plus_x - c_minus_x) / (2 * epsilon);
@@ -114,13 +230,17 @@ TEST_F(DensityGridFixture, lambda_clamps_negative_constraint) {
     float density = pbf::sph::computeDensity<2, ConstraintKernel>(0, mass, h, neighbors, positions);
     float rest_density = density * 1.1f;
 
-    float constraint = pbf::sph::computeDensityConstraint<2, ConstraintKernel>(
+    float constraint = pbf::sph::computeConstraint<2, ConstraintKernel>(
         0, rest_density, mass, h, neighbors, positions);
     EXPECT_LT(constraint, 0.0f);
 
     std::vector<vec2f> gradients;
-    pbf::sph::computeDensityConstraintGradients<2, GradientKernel>(
+    pbf::sph::detail::computeConstraintGradients<2, GradientKernel>(
         0, rest_density, mass, h, neighbors, positions, gradients);
+
+    std::vector<int> boundary_neighbors;
+    std::vector<vec2f> boundary_positions;
+    std::vector<float> boundary_psi;
 
     float sum_grad_sq = 0.0f;
     for (const auto& grad : gradients) {
@@ -130,8 +250,9 @@ TEST_F(DensityGridFixture, lambda_clamps_negative_constraint) {
     // Negative constraint would produce a positive lambda, but we clamp to zero.
     EXPECT_GT(expected_unclamped, 0.0f);
 
-    float lambda = pbf::sph::computeLambda<2, ConstraintKernel, GradientKernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
+    float lambda = pbf::sph::computeLambdaWithBoundary<2, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, boundary_neighbors,
+        positions, boundary_positions, boundary_psi);
     EXPECT_NEAR(lambda, 0.0f, 1.0e-6f);
 }
 
@@ -146,13 +267,17 @@ TEST_F(DensityGridFixture, lambda_keeps_positive_constraint) {
     float density = pbf::sph::computeDensity<2, ConstraintKernel>(0, mass, h, neighbors, positions);
     float rest_density = density * 0.5f;
 
-    float constraint = pbf::sph::computeDensityConstraint<2, ConstraintKernel>(
+    float constraint = pbf::sph::computeConstraint<2, ConstraintKernel>(
         0, rest_density, mass, h, neighbors, positions);
     EXPECT_GT(constraint, 0.0f);
 
     std::vector<vec2f> gradients;
-    pbf::sph::computeDensityConstraintGradients<2, GradientKernel>(
+    pbf::sph::detail::computeConstraintGradients<2, GradientKernel>(
         0, rest_density, mass, h, neighbors, positions, gradients);
+
+    std::vector<int> boundary_neighbors;
+    std::vector<vec2f> boundary_positions;
+    std::vector<float> boundary_psi;
 
     float sum_grad_sq = 0.0f;
     for (const auto& grad : gradients) {
@@ -161,8 +286,9 @@ TEST_F(DensityGridFixture, lambda_keeps_positive_constraint) {
     // Positive constraint should keep the negative lambda unclamped.
     float expected_lambda = -constraint / (sum_grad_sq + epsilon);
 
-    float lambda = pbf::sph::computeLambda<2, ConstraintKernel, GradientKernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
+    float lambda = pbf::sph::computeLambdaWithBoundary<2, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, boundary_neighbors,
+        positions, boundary_positions, boundary_psi);
     EXPECT_LT(lambda, 0.0f);
     EXPECT_NEAR(lambda, expected_lambda, 1.0e-6f);
 }
@@ -191,7 +317,7 @@ TEST_F(DensityGridFixture, position_correction_matrix_vector_test) {
     for (int i = 0; i < nparticles; ++i) {
         std::vector<int> neighbors = testing::get_neighbors_slow<2>(i, positions, h);
         std::vector<vec2f> gradients;
-        pbf::sph::computeDensityConstraintGradients<2, Kernel>(
+        pbf::sph::detail::computeConstraintGradients<2, Kernel>(
             i, rest_density, mass, h, neighbors, positions, gradients);
 
         // Fill the i-th column of gradc matrix
@@ -241,7 +367,7 @@ TEST_F(DensityGridFixture3D, density_constraint_3d)
     std::vector<int> neighbors;
     float rest_density = 0.95f;
     float density = pbf::sph::computeDensity<3, Kernel>(0, mass, h, neighbors, positions);
-    float density_constraint = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float density_constraint = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
     float tol = 1.0e-4f;
     EXPECT_NEAR(density_constraint, density / rest_density - 1.0f, tol);
 }
@@ -256,7 +382,7 @@ TEST_F(DensityGridFixture3D, constraint_gradient_3d) {
     neighbors = testing::get_neighbors_slow<3>(0, positions, h);
 
     std::vector<pbf::vec3f> analytical_gradients;
-    pbf::sph::computeDensityConstraintGradients<3, Kernel>(
+    pbf::sph::detail::computeConstraintGradients<3, Kernel>(
         0, rest_density, mass, h, neighbors, positions, analytical_gradients);
 
     std::vector<pbf::vec3f> fd_gradients;
@@ -265,21 +391,21 @@ TEST_F(DensityGridFixture3D, constraint_gradient_3d) {
     const float epsilon = 1.0e-3f;
 
     positions[0].x += epsilon;
-    float c_plus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_plus_x = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].x -= 2 * epsilon;
-    float c_minus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_minus_x = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].x += epsilon;
 
     positions[0].y += epsilon;
-    float c_plus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_plus_y = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].y -= 2 * epsilon;
-    float c_minus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_minus_y = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].y += epsilon;
 
     positions[0].z += epsilon;
-    float c_plus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_plus_z = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].z -= 2 * epsilon;
-    float c_minus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+    float c_minus_z = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
     positions[0].z += epsilon;
 
     fd_gradients[0].x = (c_plus_x - c_minus_x) / (2 * epsilon);
@@ -289,21 +415,21 @@ TEST_F(DensityGridFixture3D, constraint_gradient_3d) {
     for (size_t k = 0; k < neighbors.size(); ++k) {
         int neighbor_index = neighbors[k];
         positions[neighbor_index].x += epsilon;
-        c_plus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_plus_x = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].x -= 2 * epsilon;
-        c_minus_x = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_minus_x = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].x += epsilon;
 
         positions[neighbor_index].y += epsilon;
-        c_plus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_plus_y = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].y -= 2 * epsilon;
-        c_minus_y = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_minus_y = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].y += epsilon;
 
         positions[neighbor_index].z += epsilon;
-        c_plus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_plus_z = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].z -= 2 * epsilon;
-        c_minus_z = pbf::sph::computeDensityConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
+        c_minus_z = pbf::sph::computeConstraint<3, Kernel>(0, rest_density, mass, h, neighbors, positions);
         positions[neighbor_index].z += epsilon;
 
         fd_gradients[k + 1].x = (c_plus_x - c_minus_x) / (2 * epsilon);
@@ -333,13 +459,17 @@ TEST_F(DensityGridFixture3D, lambda_clamps_negative_constraint_3d) {
     float density = pbf::sph::computeDensity<3, ConstraintKernel>(0, mass, h, neighbors, positions);
     float rest_density = density * 1.1f;
 
-    float constraint = pbf::sph::computeDensityConstraint<3, ConstraintKernel>(
+    float constraint = pbf::sph::computeConstraint<3, ConstraintKernel>(
         0, rest_density, mass, h, neighbors, positions);
     EXPECT_LT(constraint, 0.0f);
 
     std::vector<pbf::vec3f> gradients;
-    pbf::sph::computeDensityConstraintGradients<3, GradientKernel>(
+    pbf::sph::detail::computeConstraintGradients<3, GradientKernel>(
         0, rest_density, mass, h, neighbors, positions, gradients);
+
+    std::vector<int> boundary_neighbors;
+    std::vector<pbf::vec3f> boundary_positions;
+    std::vector<float> boundary_psi;
 
     float sum_grad_sq = 0.0f;
     for (const auto& grad : gradients) {
@@ -348,8 +478,9 @@ TEST_F(DensityGridFixture3D, lambda_clamps_negative_constraint_3d) {
     float expected_unclamped = -constraint / (sum_grad_sq + epsilon);
     EXPECT_GT(expected_unclamped, 0.0f);
 
-    float lambda = pbf::sph::computeLambda<3, ConstraintKernel, GradientKernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
+    float lambda = pbf::sph::computeLambdaWithBoundary<3, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, boundary_neighbors,
+        positions, boundary_positions, boundary_psi);
     EXPECT_NEAR(lambda, 0.0f, 1.0e-6f);
 }
 
@@ -364,13 +495,17 @@ TEST_F(DensityGridFixture3D, lambda_keeps_positive_constraint_3d) {
     float density = pbf::sph::computeDensity<3, ConstraintKernel>(0, mass, h, neighbors, positions);
     float rest_density = density * 0.5f;
 
-    float constraint = pbf::sph::computeDensityConstraint<3, ConstraintKernel>(
+    float constraint = pbf::sph::computeConstraint<3, ConstraintKernel>(
         0, rest_density, mass, h, neighbors, positions);
     EXPECT_GT(constraint, 0.0f);
 
     std::vector<pbf::vec3f> gradients;
-    pbf::sph::computeDensityConstraintGradients<3, GradientKernel>(
+    pbf::sph::detail::computeConstraintGradients<3, GradientKernel>(
         0, rest_density, mass, h, neighbors, positions, gradients);
+
+    std::vector<int> boundary_neighbors;
+    std::vector<pbf::vec3f> boundary_positions;
+    std::vector<float> boundary_psi;
 
     float sum_grad_sq = 0.0f;
     for (const auto& grad : gradients) {
@@ -378,8 +513,9 @@ TEST_F(DensityGridFixture3D, lambda_keeps_positive_constraint_3d) {
     }
     float expected_lambda = -constraint / (sum_grad_sq + epsilon);
 
-    float lambda = pbf::sph::computeLambda<3, ConstraintKernel, GradientKernel>(
-        0, rest_density, mass, h, epsilon, neighbors, positions);
+    float lambda = pbf::sph::computeLambdaWithBoundary<3, ConstraintKernel, GradientKernel>(
+        0, rest_density, mass, h, epsilon, neighbors, boundary_neighbors,
+        positions, boundary_positions, boundary_psi);
     EXPECT_LT(lambda, 0.0f);
     EXPECT_NEAR(lambda, expected_lambda, 1.0e-6f);
 }
@@ -405,7 +541,7 @@ TEST_F(DensityGridFixture3D, position_correction_matrix_vector_test_3d) {
     for (int i = 0; i < nparticles; ++i) {
         std::vector<int> neighbors = testing::get_neighbors_slow<3>(i, positions, h);
         std::vector<pbf::vec3f> gradients;
-        pbf::sph::computeDensityConstraintGradients<3, Kernel>(
+        pbf::sph::detail::computeConstraintGradients<3, Kernel>(
             i, rest_density, mass, h, neighbors, positions, gradients);
 
         gradc[i * 3][i] = gradients[0].x;

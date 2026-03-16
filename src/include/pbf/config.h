@@ -14,6 +14,7 @@ struct PhysicsConfig {
     float gravity = 9.8f;
     float timeStep = 1.0f / 240.0f;
     float mass = 0.0f;  // Will be calculated as restDensity * particleSpacing * particleSpacing
+    float viscosity = 0.02f;
     float jitterFactor = 0.05f;
     float constraintEpsilon = 1.0e-6f;
 

@@ -243,7 +243,7 @@ void runSimulationStep(int step_index, float time,
         const auto correction_end = std::chrono::high_resolution_clock::now();
         timings.correction_ms += std::chrono::duration<double, std::milli>(correction_end - correction_start).count();
 
-        // Apply under-relaxation
+        // Accumulate and apply corrections for this iteration.
         const auto apply_start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < system.getNumParticles(); ++i) {
             total_corrections[i] += corrections[i];

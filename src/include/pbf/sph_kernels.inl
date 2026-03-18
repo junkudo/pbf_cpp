@@ -7,9 +7,7 @@ namespace pbf::sph {
             float density = mass * Kernel::evalAtZero(h);
             Vec<Dim> const & pos_i = positions[self_index];
             for (int neighbor : neighbors) {
-                // TODO - conditional check if boundary particle or not somehow
-                // What's the best way to do this?   Is it hacky to use the neighbor ix
-                // as a flag?
+                // Assumes neighbors contains only fluid particles; boundary density is handled separately.
                 Vec<Dim> const & pos_j = positions[neighbor];
                 density += mass * Kernel::eval(pos_i - pos_j, h);
             }

@@ -15,7 +15,7 @@ class ParticleSystem {
 public:
     using VecType = Vec<Dim>;
 
-    // Create a jittered grid of particles with per-dimension counts.
+    // Particle state buffers.
     std::vector<VecType> positions_;
     std::vector<VecType> velocities_;
     std::vector<float> lambdas_;
@@ -37,6 +37,7 @@ public:
     static std::vector<VecType> createJitteredGridPositions(const std::array<int, Dim>& counts,
                                                            const PhysicsConfig& config,
                                                            const VecType& origin_offset = VecType::zero()) {
+        // Create a jittered grid of particles with per-dimension counts.
         int num_particles = 1;
         for (int dim = 0; dim < Dim; ++dim) {
             num_particles *= counts[dim];

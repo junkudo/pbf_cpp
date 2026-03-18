@@ -42,5 +42,7 @@ vec2f simToScreen(const vec2f& simPos, const VisualizationConfig& config = {});
 void drawOrigin(const VisualizationConfig& config = {});
 void drawParticles(const std::vector<vec2f>& positions, float influenceRadius, const VisualizationConfig& config = {});
 void drawTime(float time, const VisualizationConfig& config = {});
+void drawWalls(const vec2f& min_bounds, const vec2f& max_bounds,
+               const VisualizationConfig& config = {});
 
 } // namespace pbf::visualization

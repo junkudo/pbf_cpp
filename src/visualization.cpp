@@ -39,14 +39,31 @@ void drawParticles(const std::vector<vec2f>& positions, float influenceRadius, c
         float screenInfluenceRadius = influenceRadius * config.scale;
         DrawCircle(screenPos.x, screenPos.y, screenInfluenceRadius, Fade(BLUE, 0.3f));
 
-        // Draw particle as a white dot
-        DrawCircle(screenPos.x, screenPos.y, config.particleRadius, config.particleColor);
+        // White center dot removed to emphasize influence radius only.
     }
 }
 
 void drawTime(float time, const VisualizationConfig& config) {
     std::string timeText = "Time: " + std::to_string(time) + " s";
-    DrawText(timeText.c_str(), 10, 10, config.timeFontSize, config.timeColor);
+    const std::string fpsText = "FPS: " + std::to_string(GetFPS());
+    const int time_width = MeasureText(timeText.c_str(), config.timeFontSize);
+    const int fps_width = MeasureText(fpsText.c_str(), config.timeFontSize);
+    const int x_time = config.screenWidth - time_width - 10;
+    const int x_fps = config.screenWidth - fps_width - 10;
+    const int y = 10;
+    const int line_spacing = config.timeFontSize + 4;
+    DrawText(timeText.c_str(), x_time, y, config.timeFontSize, config.timeColor);
+    DrawText(fpsText.c_str(), x_fps, y + line_spacing, config.timeFontSize, config.timeColor);
+}
+
+void drawWalls(const vec2f& min_bounds, const vec2f& max_bounds, const VisualizationConfig& config) {
+    const vec2f bottom_left = simToScreen(vec2f(min_bounds.x, min_bounds.y), config);
+    const vec2f bottom_right = simToScreen(vec2f(max_bounds.x, min_bounds.y), config);
+    const vec2f top_left = simToScreen(vec2f(min_bounds.x, max_bounds.y), config);
+    const vec2f top_right = simToScreen(vec2f(max_bounds.x, max_bounds.y), config);
+    DrawLine(bottom_left.x, bottom_left.y, bottom_right.x, bottom_right.y, BLUE);
+    DrawLine(bottom_left.x, bottom_left.y, top_left.x, top_left.y, BLUE);
+    DrawLine(bottom_right.x, bottom_right.y, top_right.x, top_right.y, BLUE);
 }
 
 } // namespace pbf::visualization

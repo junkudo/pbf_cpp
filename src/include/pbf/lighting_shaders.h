@@ -9,6 +9,7 @@ in vec3 vertexPosition;
 in vec2 vertexTexCoord;
 in vec3 vertexNormal;
 in vec4 vertexColor;
+in mat4 instanceTransform;
 
 uniform mat4 mvp;
 uniform mat4 matModel;
@@ -21,11 +22,12 @@ out vec3 fragNormal;
 
 void main()
 {
-    fragPosition = vec3(matModel*vec4(vertexPosition, 1.0));
+    mat4 modelInstance = instanceTransform;
+    fragPosition = vec3(modelInstance*vec4(vertexPosition, 1.0));
     fragTexCoord = vertexTexCoord;
     fragColor = vertexColor;
-    fragNormal = normalize(vec3(matNormal*vec4(vertexNormal, 1.0)));
-    gl_Position = mvp*vec4(vertexPosition, 1.0);
+    fragNormal = normalize(mat3(modelInstance) * vertexNormal);
+    gl_Position = mvp*modelInstance*vec4(vertexPosition, 1.0);
 }
 )glsl";
 

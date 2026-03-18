@@ -19,11 +19,21 @@ struct PhysicsConfig {
     float constraintEpsilon = 1.0e-6f;
 
     /**
-     * Calculate dependent values based on the current configuration
+     * Calculate dependent values for 2D simulations.
      */
-    void calculateDerivedValues() {
+    void calculateDerivedValues2D() {
+        // 2D SPH typically uses a kernel radius ~2-3x the particle spacing.
         kernelRadius = 2.5f * particleSpacing;
         mass = restDensity * particleSpacing * particleSpacing;
+    }
+
+    /**
+     * Calculate dependent values for 3D simulations.
+     */
+    void calculateDerivedValues3D(float kernel_radius_scale = 2.0f,
+                                  float mass_scale = 0.8f) {
+        kernelRadius = kernel_radius_scale * particleSpacing;
+        mass = mass_scale * particleSpacing * particleSpacing * particleSpacing * restDensity;
     }
 };
 
@@ -32,8 +42,7 @@ struct PhysicsConfig {
  */
 struct SolverConfig {
     float constraintEpsilon = 1.0e-6f;
-    float positionCorrectionFactor = 0.1f;
-    int numIterations = 50;
+    int numIterations = 15;
 };
 
 /**
@@ -43,13 +52,6 @@ struct AppConfig {
     PhysicsConfig physics;
     SolverConfig solver;
     visualization::VisualizationConfig visualization;
-
-    /**
-     * Initialize with default values and calculate derived physics values
-     */
-    AppConfig() {
-        physics.calculateDerivedValues();
-    }
 };
 
 } // namespace pbf

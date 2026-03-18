@@ -179,7 +179,6 @@ void runSimulationStep(int step_index, float time,
                        std::vector<int>& boundary_candidates,
                        StepTimings& timings) {
     const PhysicsConfig& physics_config = system.config_;  // Get physics config from system
-    const std::array<int, 2> debug_indices{0, 90};
     const auto step_start = std::chrono::high_resolution_clock::now();
     timings.lambda_ms = 0.0;
     timings.correction_ms = 0.0;
@@ -373,10 +372,6 @@ int main() {
                             container_height * kVisualizationScale,
                             container_depth * kVisualizationScale};
     const Color wall_color{120, 160, 200, 80};
-
-    const bool freeze_simulation = true;
-    const float box_extent = domain_size * kVisualizationScale;
-    const std::array<int, 4> sample_indices{0, 1, 9, 81};
 
     Mesh sphere_mesh = GenMeshSphere(draw_radius, 4, 4);
     UploadMesh(&sphere_mesh, false);

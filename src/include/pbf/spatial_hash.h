@@ -43,20 +43,20 @@ public:
     /**
      * Get neighbors for a specific particle
      * @param particle_index Index of the particle to find neighbors for
-     * @return Vector of neighbor particle indices
+     * @param neighbors Output vector of neighbor particle indices
      */
     void getNeighbors(int particle_index, std::vector<int>& neighbors) const;
 
     /**
      * Get neighbors for an arbitrary query position.
      * @param query_pos Position to find neighbors for
-     * @return Vector of neighbor particle indices
+     * @param neighbors Output vector of neighbor particle indices
      */
     void getNeighborsForPosition(const Vec& query_pos, std::vector<int>& neighbors) const;
 
     /**
      * Get neighbors for all particles (batch operation).
-     * @return Vector sized to the number of particles, with one neighbor list per particle
+     * @param all_neighbors Output vector sized to the number of particles, with one neighbor list per particle
      *         (lists may be empty for isolated particles).
      */
     void getAllNeighbors(std::vector<std::vector<int>>& all_neighbors) const;

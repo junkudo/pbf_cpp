@@ -74,12 +74,11 @@ public:
     }
 
     // Predict positions using current velocities and timestep.
-    std::vector<VecType> predictPositions() const {
-        std::vector<VecType> predicted = positions_;
+    void predictPositions(std::vector<VecType>& predicted) const {
+        predicted = positions_;
         for (int i = 0; i < num_particles_; ++i) {
             predicted[i] += velocities_[i] * config_.timeStep;
         }
-        return predicted;
     }
 
     // Apply position corrections and update velocities from full displacement.

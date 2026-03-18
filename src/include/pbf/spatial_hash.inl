@@ -26,55 +26,52 @@ void SpatialHash<Dim>::update(const std::vector<Vec>& positions) {
 }
 
 template<int Dim>
-std::vector<int> SpatialHash<Dim>::getNeighbors(int particle_index) const {
+void SpatialHash<Dim>::getNeighbors(int particle_index, std::vector<int>& neighbors) const {
+    neighbors.clear();
     if (particle_index < 0 || particle_index >= static_cast<int>(positions_.size())) {
-        return {};
+        return;
     }
 
     const Vec& query_pos = positions_[particle_index];
     const CellCoord& center_cell = particle_cells_[particle_index];
-    std::vector<int> candidates = getNeighborsInNeighborhood(center_cell);
+    getNeighborsInNeighborhood(center_cell, neighbors);
 
-    std::vector<int> neighbors;
-    neighbors.reserve(candidates.size());
-
-    for (int candidate_index : candidates) {
+    int output_index = 0;
+    for (int candidate_index : neighbors) {
         if (candidate_index != particle_index &&
             isWithinRange(query_pos, candidate_index)) {
-            neighbors.push_back(candidate_index);
+            neighbors[output_index] = candidate_index;
+            ++output_index;
         }
     }
+    neighbors.resize(output_index);
     std::sort(neighbors.begin(), neighbors.end());
-    return neighbors;
 }
 
 template<int Dim>
-std::vector<int> SpatialHash<Dim>::getNeighborsForPosition(const Vec& query_pos) const {
+void SpatialHash<Dim>::getNeighborsForPosition(const Vec& query_pos, std::vector<int>& neighbors) const {
     const CellCoord center_cell = worldToCell(query_pos);
-    std::vector<int> candidates = getNeighborsInNeighborhood(center_cell);
+    getNeighborsInNeighborhood(center_cell, neighbors);
 
-    std::vector<int> neighbors;
-    neighbors.reserve(candidates.size());
-
-    for (int candidate_index : candidates) {
+    int output_index = 0;
+    for (int candidate_index : neighbors) {
         if (isWithinRange(query_pos, candidate_index)) {
-            neighbors.push_back(candidate_index);
+            neighbors[output_index] = candidate_index;
+            ++output_index;
         }
     }
-
+    neighbors.resize(output_index);
     std::sort(neighbors.begin(), neighbors.end());
-    return neighbors;
 }
 
 template<int Dim>
-std::vector<std::vector<int>> SpatialHash<Dim>::getAllNeighbors() const {
-    std::vector<std::vector<int>> all_neighbors(positions_.size());
+void SpatialHash<Dim>::getAllNeighbors(std::vector<std::vector<int>>& all_neighbors) const {
+    all_neighbors.clear();
+    all_neighbors.resize(positions_.size());
 
     for (size_t i = 0; i < positions_.size(); ++i) {
-        all_neighbors[i] = getNeighbors(static_cast<int>(i));
+        getNeighbors(static_cast<int>(i), all_neighbors[i]);
     }
-
-    return all_neighbors;
 }
 
 template<int Dim>
@@ -99,9 +96,8 @@ typename SpatialHash<Dim>::Vec SpatialHash<Dim>::cellToWorld(const CellCoord& ce
 }
 
 template<int Dim>
-std::vector<int> SpatialHash<Dim>::getNeighborsInNeighborhood(const CellCoord& center_cell) const {
-    std::vector<int> neighbors;
-
+void SpatialHash<Dim>::getNeighborsInNeighborhood(const CellCoord& center_cell, std::vector<int>& neighbors) const {
+    neighbors.clear();
     int neighborhood_count = 1;
     for (int dim = 0; dim < Dim; ++dim) {
         neighborhood_count *= 3;
@@ -132,8 +128,6 @@ std::vector<int> SpatialHash<Dim>::getNeighborsInNeighborhood(const CellCoord& c
             neighbors.insert(neighbors.end(), cell_particles.begin(), cell_particles.end());
         }
     }
-
-    return neighbors;
 }
 
 template<int Dim>

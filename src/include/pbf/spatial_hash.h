@@ -45,20 +45,21 @@ public:
      * @param particle_index Index of the particle to find neighbors for
      * @return Vector of neighbor particle indices
      */
-    std::vector<int> getNeighbors(int particle_index) const;
+    void getNeighbors(int particle_index, std::vector<int>& neighbors) const;
 
     /**
      * Get neighbors for an arbitrary query position.
      * @param query_pos Position to find neighbors for
      * @return Vector of neighbor particle indices
      */
-    std::vector<int> getNeighborsForPosition(const Vec& query_pos) const;
+    void getNeighborsForPosition(const Vec& query_pos, std::vector<int>& neighbors) const;
 
     /**
-     * Get neighbors for all particles (batch operation)
-     * @return Vector of neighbor lists, one per particle
+     * Get neighbors for all particles (batch operation).
+     * @return Vector sized to the number of particles, with one neighbor list per particle
+     *         (lists may be empty for isolated particles).
      */
-    std::vector<std::vector<int>> getAllNeighbors() const;
+    void getAllNeighbors(std::vector<std::vector<int>>& all_neighbors) const;
 
 private:
     struct CellCoordHash {
@@ -102,7 +103,7 @@ private:
     /**
      * Get all particles in a 3^Dim neighborhood around a cell
      */
-    std::vector<int> getNeighborsInNeighborhood(const CellCoord& center_cell) const;
+    void getNeighborsInNeighborhood(const CellCoord& center_cell, std::vector<int>& neighbors) const;
 
     /**
      * Check if a particle is within distance h of a query point

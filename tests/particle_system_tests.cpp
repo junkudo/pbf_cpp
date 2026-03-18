@@ -49,7 +49,8 @@ TEST(ParticleSystem2DTests, PredictPositionsAdvancesWithVelocity) {
     pbf::ParticleSystem<2> system(counts, config, pbf::vec2f::zero());
     system.velocities_[0] = pbf::vec2f(1.0f, -2.0f);
 
-    const auto predicted = system.predictPositions();
+    std::vector<pbf::vec2f> predicted;
+    system.predictPositions(predicted);
 
     EXPECT_FLOAT_EQ(predicted[0].x, system.positions_[0].x + config.timeStep);
     EXPECT_FLOAT_EQ(predicted[0].y, system.positions_[0].y - 2.0f * config.timeStep);
@@ -130,7 +131,8 @@ TEST(ParticleSystem3DTests, PredictPositionsAdvancesWithVelocity) {
     pbf::ParticleSystem<3> system(counts, config, pbf::vec3f::zero());
     system.velocities_[0] = pbf::vec3f(1.5f, -2.5f, 0.5f);
 
-    const auto predicted = system.predictPositions();
+    std::vector<pbf::vec3f> predicted;
+    system.predictPositions(predicted);
 
     EXPECT_FLOAT_EQ(predicted[0].x, system.positions_[0].x + 1.5f * config.timeStep);
     EXPECT_FLOAT_EQ(predicted[0].y, system.positions_[0].y - 2.5f * config.timeStep);

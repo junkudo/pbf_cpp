@@ -95,33 +95,32 @@ namespace pbf::sph {
             // Clamp negative density constraints to zero to match FluidDemo and avoid surface clumping.
             constraint = std::max(constraint, 0.0f);
 
-            std::vector<Vec<Dim>> fluid_gradients;
-            detail::computeConstraintGradients<Dim, GradientKernel>(
-                self_index, rest_density, mass, h, neighbors, positions, fluid_gradients);
-            const Vec<Dim> grad_i_fluid = fluid_gradients.empty()
-                                              ? Vec<Dim>::zero()
-                                              : fluid_gradients.front();
+            const float mass_over_rest = mass / rest_density;
+            const Vec<Dim>& pi = positions[self_index];
+
+            Vec<Dim> grad_i_fluid = Vec<Dim>::zero();
             float fluid_sum_grad_sq = 0.0f;
-            for (const auto& grad : fluid_gradients) {
-                fluid_sum_grad_sq += grad.dot(grad);
+            for (int neighbor_index : neighbors) {
+                const Vec<Dim>& pj = positions[neighbor_index];
+                const Vec<Dim> r_vec = pi - pj;
+                const Vec<Dim> gradW = GradientKernel::deriv(r_vec, h);
+                const Vec<Dim> grad_j = -(mass_over_rest) * gradW;
+                grad_i_fluid -= grad_j;
+                fluid_sum_grad_sq += grad_j.dot(grad_j);
             }
+            fluid_sum_grad_sq += grad_i_fluid.dot(grad_i_fluid);
 
-            std::vector<Vec<Dim>> boundary_gradients;
-            detail::computeConstraintGradientsBoundary<Dim, GradientKernel>(
-                self_index, rest_density, h, boundary_neighbors,
-                positions, boundary_positions, boundary_psi,
-                boundary_gradients);
-
-            // grad_i = -Σ grad_j for boundary neighbors.
             Vec<Dim> grad_i_boundary = Vec<Dim>::zero();
             float boundary_sum_grad_sq = 0.0f;
-            for (const auto& gradC_j : boundary_gradients) {
-                boundary_sum_grad_sq += gradC_j.dot(gradC_j);
+            for (int boundary_index : boundary_neighbors) {
+                const Vec<Dim>& pb = boundary_positions[boundary_index];
+                const Vec<Dim> gradW = GradientKernel::deriv(pi - pb, h);
+                const Vec<Dim> gradC_j = -(boundary_psi[boundary_index] / rest_density) * gradW;
                 grad_i_boundary -= gradC_j;
+                boundary_sum_grad_sq += gradC_j.dot(gradC_j);
             }
             boundary_sum_grad_sq += grad_i_boundary.dot(grad_i_boundary);
 
-            // Recompute sum(|gradC_j|^2) with a combined grad_i term.
             const float grad_i_fluid_sq = grad_i_fluid.dot(grad_i_fluid);
             const float boundary_grad_i_sq = grad_i_boundary.dot(grad_i_boundary);
             const Vec<Dim> combined_grad_i = grad_i_fluid + grad_i_boundary;

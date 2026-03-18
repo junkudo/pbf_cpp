@@ -63,6 +63,15 @@ namespace pbf::sph {
         std::vector<int> const & neighbors,
         std::vector<Vec<Dim>> const & positions);
 
+    // Compute boundary psi (pressure strength * rest density * boundary volume).
+    template <int Dim, typename Kernel>
+    float computeBoundaryPsi(int self_index,
+        float h,
+        float rest_density,
+        float pressure_scale,
+        std::vector<int> const& boundary_neighbors,
+        std::vector<Vec<Dim>> const& boundary_positions);
+
     // Apply XSPH viscosity update to velocities
     template <int Dim, typename Kernel>
     void computeXsphViscosity(float viscosity, float mass, float h,

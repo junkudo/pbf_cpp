@@ -328,17 +328,14 @@ int main() {
         boundary_hash.update(boundary_positions);
         for (size_t i = 0; i < boundary_psi.size(); ++i) {
             const vec3f& pi = boundary_positions[i];
-            float delta = sph::CubicSpline<3>::evalAtZero(app_config.physics.kernelRadius);
             boundary_hash.getNeighborsForPosition(pi, boundary_neighbors);
-            for (int neighbor_index : boundary_neighbors) {
-                if (neighbor_index == static_cast<int>(i)) {
-                    continue;
-                }
-                const vec3f& pj = boundary_positions[neighbor_index];
-                delta += sph::CubicSpline<3>::eval(pi - pj, app_config.physics.kernelRadius);
-            }
-            const float volume = 1.0f / delta;
-            boundary_psi[i] = app_config.physics.restDensity * volume;
+            boundary_psi[i] = sph::computeBoundaryPsi<3, sph::CubicSpline<3>>(
+                static_cast<int>(i),
+                app_config.physics.kernelRadius,
+                app_config.physics.restDensity,
+                1.0f, // Boundary pressure strength.
+                boundary_neighbors,
+                boundary_positions);
         }
     }
 

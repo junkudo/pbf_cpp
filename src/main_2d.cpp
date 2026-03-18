@@ -245,17 +245,14 @@ int main() {
     std::vector<int> boundary_neighbors;
     for (size_t i = 0; i < boundary_psi.size(); ++i) {
         const vec2f& pi = boundary_positions[i];
-        float delta = sph::CubicSpline<2>::evalAtZero(app_config.physics.kernelRadius);
         boundary_hash.getNeighborsForPosition(pi, boundary_neighbors);
-        for (int neighbor_index : boundary_neighbors) {
-            if (neighbor_index == static_cast<int>(i)) {
-                continue;
-            }
-            const vec2f& pj = boundary_positions[neighbor_index];
-            delta += sph::CubicSpline<2>::eval(pi - pj, app_config.physics.kernelRadius);
-        }
-        const float volume = 1.0f / delta;
-        boundary_psi[i] = 1.2f * app_config.physics.restDensity * volume;
+        boundary_psi[i] = sph::computeBoundaryPsi<2, sph::CubicSpline<2>>(
+            static_cast<int>(i),
+            app_config.physics.kernelRadius,
+            app_config.physics.restDensity,
+            1.2f, // Boundary pressure strength.
+            boundary_neighbors,
+            boundary_positions);
     }
 
     float simulationTime = 0.0f;  // Add time tracking

@@ -537,3 +537,25 @@ TEST(sph_kernels, xsph_viscosity_zero_no_change) {
     EXPECT_NEAR(velocities[1].x, expected1.x, tol);
     EXPECT_NEAR(velocities[1].y, expected1.y, tol);
 }
+
+TEST(sph_kernels, boundary_psi_matches_manual_sum) {
+    using Kernel = pbf::sph::CubicSpline<2>;
+    const float h = 1.0f;
+    const float rest_density = 1000.0f;
+    const float pressure_scale = 1.2f;
+
+    std::vector<pbf::vec2f> boundary_positions{
+        pbf::vec2f(0.0f, 0.0f),
+        pbf::vec2f(0.5f, 0.0f)
+    };
+    std::vector<int> boundary_neighbors{0, 1};
+
+    const float psi = pbf::sph::computeBoundaryPsi<2, Kernel>(
+        0, h, rest_density, pressure_scale, boundary_neighbors, boundary_positions);
+
+    const float delta = Kernel::evalAtZero(h)
+                        + Kernel::eval(boundary_positions[0] - boundary_positions[1], h);
+    const float expected = pressure_scale * rest_density * (1.0f / delta);
+    const float tol = 1.0e-5f;
+    EXPECT_NEAR(psi, expected, tol);
+}

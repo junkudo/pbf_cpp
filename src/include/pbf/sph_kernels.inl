@@ -17,6 +17,28 @@ namespace pbf::sph {
     }
 
     template <int Dim, typename Kernel>
+    float computeBoundaryPsi(int self_index,
+        float h,
+        float rest_density,
+        float pressure_scale,
+        std::vector<int> const& boundary_neighbors,
+        std::vector<Vec<Dim>> const& boundary_positions) {
+            Vec<Dim> const& pi = boundary_positions[self_index];
+            float delta = Kernel::evalAtZero(h);
+
+            for (int neighbor_index : boundary_neighbors) {
+                if (neighbor_index == self_index) {
+                    continue;
+                }
+                Vec<Dim> const& pj = boundary_positions[neighbor_index];
+                delta += Kernel::eval(pi - pj, h);
+            }
+
+            const float volume = 1.0f / delta;
+            return pressure_scale * rest_density * volume;
+    }
+
+    template <int Dim, typename Kernel>
     void computeXsphViscosity(float viscosity, float mass, float h,
         std::vector<Vec<Dim>> const& positions,
         std::vector<std::vector<int>> const& neighbors,

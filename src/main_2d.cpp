@@ -145,6 +145,91 @@ std::vector<vec2f> initContainerBoundary(float container_width,
     return boundary_positions;
 }
 
+// Build boundary particles, hash, and psi values for the container walls.
+void initBoundaryData(float container_width,
+                      float container_height,
+                      float boundary_spacing,
+                      float kernel_radius,
+                      float rest_density,
+                      std::vector<vec2f>& boundary_positions,
+                      std::vector<float>& boundary_psi,
+                      SpatialHash<2>& boundary_hash) {
+    boundary_positions = initContainerBoundary(container_width, container_height, boundary_spacing);
+    boundary_psi.assign(boundary_positions.size(), 0.0f);
+    boundary_hash.update(boundary_positions);
+
+    std::vector<int> boundary_neighbors;
+    for (size_t i = 0; i < boundary_psi.size(); ++i) {
+        const vec2f& pi = boundary_positions[i];
+        boundary_hash.getNeighborsForPosition(pi, boundary_neighbors);
+        boundary_psi[i] = sph::computeBoundaryPsi<2, sph::CubicSpline<2>>(
+            static_cast<int>(i),
+            kernel_radius,
+            rest_density,
+            kBoundaryPressureStrength,
+            boundary_neighbors,
+            boundary_positions);
+    }
+}
+
+// Initialize 2D demo config defaults.
+AppConfig initAppConfig2D() {
+    AppConfig app_config;
+    app_config.visualization.scale = kVisualizationScale;
+    app_config.visualization.offsetX = kOriginOffsetScaleX
+                                       * static_cast<float>(app_config.visualization.screenWidth);
+    app_config.visualization.offsetY = kOriginOffsetScaleY
+                                       * static_cast<float>(app_config.visualization.screenHeight);
+    app_config.physics.particleSpacing = kParticleSpacing;
+    app_config.physics.calculateDerivedValues2D();
+    // Render radius in pixels derived from kernel radius.
+    app_config.visualization.particleRadius = app_config.physics.kernelRadius
+                                              * app_config.visualization.scale;
+    // Override default solver iterations.
+    app_config.solver.numIterations = kSolverIterations;
+    return app_config;
+}
+
+// Render the current frame and record timing breakdowns.
+void renderFrame(const AppConfig& app_config,
+                 const vec2f& min_bounds,
+                 const vec2f& max_bounds,
+                 const std::vector<vec2f>& positions,
+                 float kernel_radius,
+                 float simulation_time,
+                 StepTimings& timings) {
+    const auto render_start = std::chrono::high_resolution_clock::now();
+    const auto render_begin_start = std::chrono::high_resolution_clock::now();
+    BeginDrawing();
+    ClearBackground(BLACK);
+    const auto render_begin_end = std::chrono::high_resolution_clock::now();
+    timings.render_begin_ms = std::chrono::duration<double, std::milli>(
+        render_begin_end - render_begin_start).count();
+
+    const auto render_sim_start = std::chrono::high_resolution_clock::now();
+    pbf::visualization::drawOrigin(app_config.visualization);
+    pbf::visualization::drawWalls(min_bounds, max_bounds, app_config.visualization);
+    pbf::visualization::drawParticles(positions, kernel_radius, app_config.visualization);
+    pbf::visualization::drawTime(simulation_time, app_config.visualization);
+    const auto render_sim_end = std::chrono::high_resolution_clock::now();
+    timings.render_sim_ms = std::chrono::duration<double, std::milli>(
+        render_sim_end - render_sim_start).count();
+
+    const auto render_overlay_start = std::chrono::high_resolution_clock::now();
+    drawOverlay(timings);
+    const auto render_overlay_end = std::chrono::high_resolution_clock::now();
+    timings.render_overlay_ms = std::chrono::duration<double, std::milli>(
+        render_overlay_end - render_overlay_start).count();
+
+    const auto render_end_start = std::chrono::high_resolution_clock::now();
+    EndDrawing();
+    const auto render_end = std::chrono::high_resolution_clock::now();
+    timings.render_end_ms = std::chrono::duration<double, std::milli>(
+        render_end - render_end_start).count();
+    timings.render_ms = std::chrono::duration<double, std::milli>(
+        render_end - render_start).count();
+}
+
 void solveConstraints(const std::vector<vec2f>& predicted_positions,
                       const std::vector<std::vector<int>>& neighbors,
                       const std::vector<std::vector<int>>& boundary_neighbors,
@@ -269,21 +354,7 @@ void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash,
 
 int main() {
     // Create complete application configuration
-    AppConfig app_config;
-
-    // Set appropriate particle radius to make particles visible but not too large
-    app_config.visualization.scale = kVisualizationScale;
-    app_config.visualization.offsetX = kOriginOffsetScaleX
-                                       * static_cast<float>(app_config.visualization.screenWidth);
-    app_config.visualization.offsetY = kOriginOffsetScaleY
-                                       * static_cast<float>(app_config.visualization.screenHeight);
-    app_config.physics.particleSpacing = kParticleSpacing;
-    app_config.physics.calculateDerivedValues2D();
-    // Render radius in pixels derived from kernel radius.
-    app_config.visualization.particleRadius = app_config.physics.kernelRadius
-                                              * app_config.visualization.scale;
-    // Override default solver iterations.
-    app_config.solver.numIterations = kSolverIterations;
+    AppConfig app_config = initAppConfig2D();
 
     std::cout << "PBF Fluid Simulation with Visualization" << std::endl;
     std::cout << "Particles: " << (kParticleCountX * kParticleCountY) << std::endl;
@@ -308,23 +379,17 @@ int main() {
     vec2f min_bounds(-0.5f * container_width, 0.0f);
     vec2f max_bounds(0.5f * container_width, container_height);
     SpatialHash<2> spatial_hash(min_bounds, max_bounds, app_config.physics.kernelRadius);
-    std::vector<vec2f> boundary_positions = initContainerBoundary(container_width, container_height,
-                                                                  boundary_spacing);
-    std::vector<float> boundary_psi(boundary_positions.size(), 0.0f);
+    std::vector<vec2f> boundary_positions;
+    std::vector<float> boundary_psi;
     SpatialHash<2> boundary_hash(min_bounds, max_bounds, app_config.physics.kernelRadius);
-    boundary_hash.update(boundary_positions);
-    std::vector<int> boundary_neighbors;
-    for (size_t i = 0; i < boundary_psi.size(); ++i) {
-        const vec2f& pi = boundary_positions[i];
-        boundary_hash.getNeighborsForPosition(pi, boundary_neighbors);
-        boundary_psi[i] = sph::computeBoundaryPsi<2, sph::CubicSpline<2>>(
-            static_cast<int>(i),
-            app_config.physics.kernelRadius,
-            app_config.physics.restDensity,
-            kBoundaryPressureStrength,
-            boundary_neighbors,
-            boundary_positions);
-    }
+    initBoundaryData(container_width,
+                     container_height,
+                     boundary_spacing,
+                     app_config.physics.kernelRadius,
+                     app_config.physics.restDensity,
+                     boundary_positions,
+                     boundary_psi,
+                     boundary_hash);
 
     float simulationTime = 0.0f;  // Add time tracking
 
@@ -346,35 +411,13 @@ int main() {
                           total_corrections, corrections,
                           lambdas, boundary_candidates, timings);
         simulationTime += app_config.physics.timeStep;
-        const auto render_start = std::chrono::high_resolution_clock::now();
-        const auto render_begin_start = std::chrono::high_resolution_clock::now();
-        BeginDrawing();
-        ClearBackground(BLACK);
-        const auto render_begin_end = std::chrono::high_resolution_clock::now();
-        timings.render_begin_ms = std::chrono::duration<double, std::milli>(
-            render_begin_end - render_begin_start).count();
-
-        const auto render_sim_start = std::chrono::high_resolution_clock::now();
-        pbf::visualization::drawOrigin(app_config.visualization);
-        pbf::visualization::drawWalls(min_bounds, max_bounds, app_config.visualization);
-        pbf::visualization::drawParticles(system.positions_, app_config.physics.kernelRadius, app_config.visualization);
-        pbf::visualization::drawTime(simulationTime, app_config.visualization);
-        const auto render_sim_end = std::chrono::high_resolution_clock::now();
-        timings.render_sim_ms = std::chrono::duration<double, std::milli>(
-            render_sim_end - render_sim_start).count();
-
-        const auto render_overlay_start = std::chrono::high_resolution_clock::now();
-        drawOverlay(timings);
-        const auto render_overlay_end = std::chrono::high_resolution_clock::now();
-        timings.render_overlay_ms = std::chrono::duration<double, std::milli>(
-            render_overlay_end - render_overlay_start).count();
-        const auto render_end_start = std::chrono::high_resolution_clock::now();
-        EndDrawing();
-        const auto render_end = std::chrono::high_resolution_clock::now();
-        timings.render_end_ms = std::chrono::duration<double, std::milli>(
-            render_end - render_end_start).count();
-        timings.render_ms = std::chrono::duration<double, std::milli>(
-            render_end - render_start).count();
+        renderFrame(app_config,
+                    min_bounds,
+                    max_bounds,
+                    system.positions_,
+                    app_config.physics.kernelRadius,
+                    simulationTime,
+                    timings);
     }
 
     CloseWindow();

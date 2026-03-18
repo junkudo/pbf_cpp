@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <memory>
 #include <chrono>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include "pbf/pbf_kernels.h"
 #include "pbf/spatial_hash.h"
@@ -57,6 +60,7 @@ struct StepTimings {
     double render_overlay_ms = 0.0;
     double render_end_ms = 0.0;
 };
+
 
 // Draw the CPU timing overlay for a simulation step.
 void drawOverlay(const StepTimings& timings) {
@@ -241,6 +245,7 @@ void solveConstraints(const std::vector<vec2f>& predicted_positions,
     corrections.clear();
     corrections.resize(neighbors.size(), vec2f::zero());
 
+#pragma omp parallel for if (neighbors.size() > 1)
     for (int i = 0; i < static_cast<int>(neighbors.size()); ++i) {
         sph::calculatePositionCorrection<2, sph::CubicSpline<2>>(
             i, config.restDensity, config.mass, config.kernelRadius,
@@ -304,6 +309,7 @@ void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash,
 
     for (int iter = 0; iter < solver_config.numIterations; ++iter) {
         const auto lambda_start = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for if (system.getNumParticles() > 1)
         for (int i = 0; i < system.getNumParticles(); ++i) {
             lambdas[i] = sph::computeLambdaWithBoundary<2, sph::CubicSpline<2>, sph::CubicSpline<2>>(
                 i, physics_config.restDensity, physics_config.mass,
@@ -323,6 +329,7 @@ void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash,
         timings.correction_ms += std::chrono::duration<double, std::milli>(correction_end - correction_start).count();
 
         const auto apply_start = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for if (system.getNumParticles() > 1)
         for (int i = 0; i < system.getNumParticles(); ++i) {
             total_corrections[i] += corrections[i];
             predicted_positions[i] += corrections[i];
@@ -402,15 +409,16 @@ int main() {
     std::vector<float> lambdas(system.getNumParticles(), 0.0f);
     std::vector<int> boundary_candidates;
     StepTimings timings;
-
     while (!WindowShouldClose()) {
-        runSimulationStep(system, spatial_hash, boundary_hash,
-                          boundary_positions, boundary_psi,
-                          app_config.solver, predicted_positions,
-                          neighbors, boundary_neighbors_buffer,
-                          total_corrections, corrections,
-                          lambdas, boundary_candidates, timings);
-        simulationTime += app_config.physics.timeStep;
+        for (int sim_step = 0; sim_step < 4; ++sim_step) {
+            runSimulationStep(system, spatial_hash, boundary_hash,
+                              boundary_positions, boundary_psi,
+                              app_config.solver, predicted_positions,
+                              neighbors, boundary_neighbors_buffer,
+                              total_corrections, corrections,
+                              lambdas, boundary_candidates, timings);
+            simulationTime += app_config.physics.timeStep;
+        }
         renderFrame(app_config,
                     min_bounds,
                     max_bounds,

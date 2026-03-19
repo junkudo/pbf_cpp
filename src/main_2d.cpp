@@ -61,6 +61,24 @@ struct StepTimings {
     double render_end_ms = 0.0;
 };
 
+void resetTimings(StepTimings& timings) {
+    timings.total_ms = 0.0;
+    timings.gravity_ms = 0.0;
+    timings.predict_ms = 0.0;
+    timings.hash_update_ms = 0.0;
+    timings.neighbor_ms = 0.0;
+    timings.lambda_ms = 0.0;
+    timings.correction_ms = 0.0;
+    timings.apply_corrections_ms = 0.0;
+    timings.update_positions_ms = 0.0;
+    timings.xsph_ms = 0.0;
+    timings.render_ms = 0.0;
+    timings.render_begin_ms = 0.0;
+    timings.render_sim_ms = 0.0;
+    timings.render_overlay_ms = 0.0;
+    timings.render_end_ms = 0.0;
+}
+
 
 // Draw the CPU timing overlay for a simulation step.
 void drawOverlay(const StepTimings& timings) {
@@ -273,24 +291,20 @@ void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash,
                        StepTimings& timings) {
     const PhysicsConfig& physics_config = system.config_;
     const auto step_start = std::chrono::high_resolution_clock::now();
-    timings.lambda_ms = 0.0;
-    timings.correction_ms = 0.0;
-    timings.apply_corrections_ms = 0.0;
-
     const auto gravity_start = std::chrono::high_resolution_clock::now();
     system.updateVelocityFromGravity();
     const auto gravity_end = std::chrono::high_resolution_clock::now();
-    timings.gravity_ms = std::chrono::duration<double, std::milli>(gravity_end - gravity_start).count();
+    timings.gravity_ms += std::chrono::duration<double, std::milli>(gravity_end - gravity_start).count();
 
     const auto predict_start = std::chrono::high_resolution_clock::now();
     system.predictPositions(predicted_positions);
     const auto predict_end = std::chrono::high_resolution_clock::now();
-    timings.predict_ms = std::chrono::duration<double, std::milli>(predict_end - predict_start).count();
+    timings.predict_ms += std::chrono::duration<double, std::milli>(predict_end - predict_start).count();
 
     const auto hash_start = std::chrono::high_resolution_clock::now();
     spatial_hash.update(predicted_positions);
     const auto hash_end = std::chrono::high_resolution_clock::now();
-    timings.hash_update_ms = std::chrono::duration<double, std::milli>(hash_end - hash_start).count();
+    timings.hash_update_ms += std::chrono::duration<double, std::milli>(hash_end - hash_start).count();
 
     const auto neighbor_start = std::chrono::high_resolution_clock::now();
     spatial_hash.getAllNeighbors(neighbors);
@@ -300,7 +314,7 @@ void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash,
         boundary_neighbors[i] = boundary_candidates;
     }
     const auto neighbor_end = std::chrono::high_resolution_clock::now();
-    timings.neighbor_ms = std::chrono::duration<double, std::milli>(neighbor_end - neighbor_start).count();
+    timings.neighbor_ms += std::chrono::duration<double, std::milli>(neighbor_end - neighbor_start).count();
 
     total_corrections.clear();
     total_corrections.resize(system.getNumParticles(), vec2f::zero());
@@ -341,7 +355,7 @@ void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash,
     const auto update_start = std::chrono::high_resolution_clock::now();
     system.updatePositions(total_corrections);
     const auto update_end = std::chrono::high_resolution_clock::now();
-    timings.update_positions_ms = std::chrono::duration<double, std::milli>(update_end - update_start).count();
+    timings.update_positions_ms += std::chrono::duration<double, std::milli>(update_end - update_start).count();
     const auto xsph_start = std::chrono::high_resolution_clock::now();
     sph::computeXsphViscosity<2, sph::CubicSpline<2>>(
         physics_config.viscosity,
@@ -351,9 +365,9 @@ void runSimulationStep(ParticleSystem<2>& system, SpatialHash<2>& spatial_hash,
         neighbors,
         system.velocities_);
     const auto xsph_end = std::chrono::high_resolution_clock::now();
-    timings.xsph_ms = std::chrono::duration<double, std::milli>(xsph_end - xsph_start).count();
+    timings.xsph_ms += std::chrono::duration<double, std::milli>(xsph_end - xsph_start).count();
     const auto step_end = std::chrono::high_resolution_clock::now();
-    timings.total_ms = std::chrono::duration<double, std::milli>(step_end - step_start).count();
+    timings.total_ms += std::chrono::duration<double, std::milli>(step_end - step_start).count();
 }
 
 } // namespace
@@ -410,6 +424,7 @@ int main() {
     std::vector<int> boundary_candidates;
     StepTimings timings;
     while (!WindowShouldClose()) {
+        resetTimings(timings);
         for (int sim_step = 0; sim_step < 4; ++sim_step) {
             runSimulationStep(system, spatial_hash, boundary_hash,
                               boundary_positions, boundary_psi,

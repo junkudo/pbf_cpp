@@ -13,9 +13,9 @@ namespace pbf::sph {
     struct Poly6<2> {
         explicit Poly6(float h);
 
-        float eval(Vec<2> const & rVec) const;
+        float eval(float r) const;
         float evalAtZero() const;
-        Vec<2> deriv(Vec<2> const & rVec) const;
+        float dWdr(float r) const;
 
     private:
         float h_;
@@ -28,9 +28,9 @@ namespace pbf::sph {
     struct Poly6<3> {
         explicit Poly6(float h);
 
-        float eval(Vec<3> const & rVec) const;
+        float eval(float r) const;
         float evalAtZero() const;
-        Vec<3> deriv(Vec<3> const & rVec) const;
+        float dWdr(float r) const;
 
     private:
         float h_;
@@ -46,9 +46,9 @@ namespace pbf::sph {
     struct Spikey<2> {
         explicit Spikey(float h);
 
-        float eval(Vec<2> const & rVec) const;
+        float eval(float r) const;
         float evalAtZero() const;
-        Vec<2> deriv(Vec<2> const & rVec) const;
+        float dWdr(float r) const;
 
     private:
         float h_;
@@ -60,9 +60,9 @@ namespace pbf::sph {
     struct Spikey<3> {
         explicit Spikey(float h);
 
-        float eval(Vec<3> const & rVec) const;
+        float eval(float r) const;
         float evalAtZero() const;
-        Vec<3> deriv(Vec<3> const & rVec) const;
+        float dWdr(float r) const;
 
     private:
         float h_;
@@ -79,9 +79,9 @@ namespace pbf::sph {
     struct CubicSpline<2> {
         explicit CubicSpline(float h);
 
-        float eval(Vec<2> const & rVec) const;
+        float eval(float r) const;
         float evalAtZero() const;
-        Vec<2> deriv(Vec<2> const & rVec) const;
+        float dWdr(float r) const;
 
     private:
         float h_;
@@ -95,9 +95,9 @@ namespace pbf::sph {
     struct CubicSpline<3> {
         explicit CubicSpline(float h);
 
-        float eval(Vec<3> const & rVec) const;
+        float eval(float r) const;
         float evalAtZero() const;
-        Vec<3> deriv(Vec<3> const & rVec) const;
+        float dWdr(float r) const;
 
     private:
         float h_;

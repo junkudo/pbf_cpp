@@ -5,8 +5,7 @@ namespace pbf::sph {
         , coeff_(4.0f / (std::numbers::pi_v<float> * h2_ * h2_ * h2_ * h2_))
         , eval_at_zero_(coeff_ * h2_ * h2_ * h2_) {}
 
-    inline float Poly6<2>::eval(Vec<2> const & rVec) const {
-        const float r = rVec.length();
+    inline float Poly6<2>::eval(float r) const {
         if (r > h_) {
             return 0.0f;
         }
@@ -19,14 +18,13 @@ namespace pbf::sph {
         return eval_at_zero_;
     }
 
-    inline Vec<2> Poly6<2>::deriv(Vec<2> const & rVec) const {
-        const float r = rVec.length();
+    inline float Poly6<2>::dWdr(float r) const {
         if (r > h_) {
-            return Vec<2>(0.0f, 0.0f);
+            return 0.0f;
         }
         const float r2 = r * r;
         const float diff = h2_ - r2;
-        return -6.0f * coeff_ * diff * diff * rVec;
+        return -6.0f * coeff_ * r * diff * diff;
     }
 
     inline Poly6<3>::Poly6(float h)
@@ -35,8 +33,7 @@ namespace pbf::sph {
         , coeff_(315.0f / (64.0f * std::numbers::pi_v<float> * h2_ * h2_ * h2_ * h2_ * h))
         , eval_at_zero_(coeff_ * h2_ * h2_ * h2_) {}
 
-    inline float Poly6<3>::eval(Vec<3> const & rVec) const {
-        const float r = rVec.length();
+    inline float Poly6<3>::eval(float r) const {
         if (r > h_) {
             return 0.0f;
         }
@@ -49,14 +46,13 @@ namespace pbf::sph {
         return eval_at_zero_;
     }
 
-    inline Vec<3> Poly6<3>::deriv(Vec<3> const & rVec) const {
-        const float r = rVec.length();
+    inline float Poly6<3>::dWdr(float r) const {
         if (r > h_) {
-            return Vec<3>(0.0f, 0.0f, 0.0f);
+            return 0.0f;
         }
         const float r2 = r * r;
         const float diff = h2_ - r2;
-        return -6.0f * coeff_ * diff * diff * rVec;
+        return -6.0f * coeff_ * r * diff * diff;
     }
 
     inline Spikey<2>::Spikey(float h)
@@ -64,8 +60,7 @@ namespace pbf::sph {
         , coeff_(10.0f / (std::numbers::pi_v<float> * h * h * h * h * h))
         , eval_at_zero_(coeff_ * h * h * h) {}
 
-    inline float Spikey<2>::eval(Vec<2> const & rVec) const {
-        const float r = rVec.length();
+    inline float Spikey<2>::eval(float r) const {
         if (r > h_) {
             return 0.0f;
         }
@@ -77,14 +72,12 @@ namespace pbf::sph {
         return eval_at_zero_;
     }
 
-    inline Vec<2> Spikey<2>::deriv(Vec<2> const & rVec) const {
-        const float r = rVec.length();
+    inline float Spikey<2>::dWdr(float r) const {
         if (r > h_ || r <= 0.0f) {
-            return Vec<2>(0.0f, 0.0f);
+            return 0.0f;
         }
         const float diff = h_ - r;
-        const float dfdr = -3.0f * coeff_ * diff * diff;
-        return dfdr * rVec / r;
+        return -3.0f * coeff_ * diff * diff;
     }
 
     inline Spikey<3>::Spikey(float h)
@@ -92,8 +85,7 @@ namespace pbf::sph {
         , coeff_(15.0f / (std::numbers::pi_v<float> * h * h * h * h * h * h))
         , eval_at_zero_(coeff_ * h * h * h) {}
 
-    inline float Spikey<3>::eval(Vec<3> const & rVec) const {
-        const float r = rVec.length();
+    inline float Spikey<3>::eval(float r) const {
         if (r > h_) {
             return 0.0f;
         }
@@ -105,14 +97,12 @@ namespace pbf::sph {
         return eval_at_zero_;
     }
 
-    inline Vec<3> Spikey<3>::deriv(Vec<3> const & rVec) const {
-        const float r = rVec.length();
+    inline float Spikey<3>::dWdr(float r) const {
         if (r > h_ || r <= 0.0f) {
-            return Vec<3>(0.0f, 0.0f, 0.0f);
+            return 0.0f;
         }
         const float diff = h_ - r;
-        const float dfdr = -3.0f * coeff_ * diff * diff;
-        return dfdr * rVec / r;
+        return -3.0f * coeff_ * diff * diff;
     }
 
     inline CubicSpline<2>::CubicSpline(float h)
@@ -121,8 +111,7 @@ namespace pbf::sph {
         , inv_h2_(inv_h_ * inv_h_)
         , k_(40.0f / (7.0f * std::numbers::pi_v<float> * h * h)) {}
 
-    inline float CubicSpline<2>::eval(Vec<2> const & rVec) const {
-        const float r = rVec.length();
+    inline float CubicSpline<2>::eval(float r) const {
         const float q = r * inv_h_;
         if (q > 1.0f) {
             return 0.0f;
@@ -140,21 +129,17 @@ namespace pbf::sph {
         return k_;
     }
 
-    inline Vec<2> CubicSpline<2>::deriv(Vec<2> const & rVec) const {
-        const float r = rVec.length();
+    inline float CubicSpline<2>::dWdr(float r) const {
         const float q = r * inv_h_;
         if (r <= 1.0e-6f || q > 1.0f) {
-            return Vec<2>(0.0f, 0.0f);
+            return 0.0f;
         }
-        const float inv_rh = inv_h_ / r;
         if (q <= 0.5f) {
             const float q2 = q * q;
-            const float factor = k_ * (18.0f * q2 - 12.0f * q);
-            return rVec * (factor * inv_rh);
+            return k_ * (18.0f * q2 - 12.0f * q) * inv_h_;
         }
         const float factor = 1.0f - q;
-        const float grad = k_ * (-6.0f * factor * factor);
-        return rVec * (grad * inv_rh);
+        return k_ * (-6.0f * factor * factor) * inv_h_;
     }
 
     inline CubicSpline<3>::CubicSpline(float h)
@@ -162,8 +147,7 @@ namespace pbf::sph {
         , inv_h_(1.0f / h)
         , k_(8.0f / (std::numbers::pi_v<float> * h * h * h)) {}
 
-    inline float CubicSpline<3>::eval(Vec<3> const & rVec) const {
-        const float r = rVec.length();
+    inline float CubicSpline<3>::eval(float r) const {
         const float q = r * inv_h_;
         if (q > 1.0f) {
             return 0.0f;
@@ -181,21 +165,17 @@ namespace pbf::sph {
         return k_;
     }
 
-    inline Vec<3> CubicSpline<3>::deriv(Vec<3> const & rVec) const {
-        const float r = rVec.length();
+    inline float CubicSpline<3>::dWdr(float r) const {
         const float q = r * inv_h_;
         if (r <= 1.0e-6f || q > 1.0f) {
-            return Vec<3>(0.0f, 0.0f, 0.0f);
+            return 0.0f;
         }
-        const float inv_rh = inv_h_ / r;
         if (q <= 0.5f) {
             const float q2 = q * q;
-            const float factor = k_ * (18.0f * q2 - 12.0f * q);
-            return rVec * (factor * inv_rh);
+            return k_ * (18.0f * q2 - 12.0f * q) * inv_h_;
         }
         const float factor = 1.0f - q;
-        const float grad = k_ * (-6.0f * factor * factor);
-        return rVec * (grad * inv_rh);
+        return k_ * (-6.0f * factor * factor) * inv_h_;
     }
 
     template <int Dim, typename Kernel>
@@ -209,7 +189,7 @@ namespace pbf::sph {
             for (int neighbor : neighbors) {
                 // Assumes neighbors contains only fluid particles; boundary density is handled separately.
                 Vec<Dim> const & pos_j = positions[neighbor];
-                density += mass * kernel.eval(pos_i - pos_j);
+                density += mass * kernel.eval((pos_i - pos_j).length());
             }
 
             return density;
@@ -232,7 +212,7 @@ namespace pbf::sph {
                     continue;
                 }
                 Vec<Dim> const& pj = boundary_positions[neighbor_index];
-                delta += kernel.eval(pi - pj);
+                delta += kernel.eval((pi - pj).length());
             }
 
             const float volume = 1.0f / delta;
@@ -262,7 +242,7 @@ namespace pbf::sph {
                 }
                 const auto& vj = velocities[neighbor];
                 const auto& xj = positions[neighbor];
-                deltas[i] += (vj - vi) * (mass / density_j) * kernel.eval(xi - xj);
+                deltas[i] += (vj - vi) * (mass / density_j) * kernel.eval((xi - xj).length());
             }
         }
 

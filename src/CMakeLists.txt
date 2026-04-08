@@ -20,15 +20,6 @@ else()
 endif()
 
 
-add_executable(pbf_app_3d
-    main_3d.cpp
-)
-
-target_link_libraries(pbf_app_3d
-    PRIVATE pbf
-    PRIVATE raylib
-)
-
 add_executable(pbf_app_2d
     main_2d.cpp
 )

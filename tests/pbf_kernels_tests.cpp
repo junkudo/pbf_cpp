@@ -28,6 +28,7 @@ TEST_F(DensityGridFixture, density_constraint)
 
 TEST_F(DensityGridFixture, boundary_density_contribution) {
     using Kernel = pbf::sph::Poly6<2>;
+    Kernel kernel(h);
 
     std::vector<vec2f> boundary_positions;
     boundary_positions.push_back(positions[0] + vec2f(0.5f, 0.0f));
@@ -36,13 +37,14 @@ TEST_F(DensityGridFixture, boundary_density_contribution) {
 
     float density = pbf::sph::computeConstraintBoundary<2, Kernel>(
         0, h, boundary_neighbors, positions, boundary_positions, boundary_psi);
-    float expected_density = boundary_psi[0] * Kernel::eval(positions[0] - boundary_positions[0], h);
+    float expected_density = boundary_psi[0] * kernel.eval(positions[0] - boundary_positions[0]);
 
     EXPECT_NEAR(density, expected_density, 1.0e-6f);
 }
 
 TEST_F(DensityGridFixture, boundary_gradient_sum_sq) {
     using GradientKernel = pbf::sph::Spikey<2>;
+    GradientKernel kernel(h);
 
     std::vector<vec2f> boundary_positions;
     boundary_positions.push_back(positions[0] + vec2f(0.5f, 0.0f));
@@ -63,7 +65,7 @@ TEST_F(DensityGridFixture, boundary_gradient_sum_sq) {
     }
     sum_grad_sq += grad_i.dot(grad_i);
 
-    vec2f gradW = GradientKernel::deriv(positions[0] - boundary_positions[0], h);
+    vec2f gradW = kernel.deriv(positions[0] - boundary_positions[0]);
     vec2f gradC_j = -(boundary_psi[0] / rest_density) * gradW;
 
     float expected_sum = 2.0f * gradC_j.dot(gradC_j);
@@ -74,6 +76,7 @@ TEST_F(DensityGridFixture, boundary_gradient_sum_sq) {
 
 TEST_F(DensityGridFixture, boundary_position_correction) {
     using GradientKernel = pbf::sph::Spikey<2>;
+    GradientKernel kernel(h);
 
     std::vector<vec2f> boundary_positions;
     boundary_positions.push_back(positions[0] + vec2f(0.5f, 0.0f));
@@ -87,7 +90,7 @@ TEST_F(DensityGridFixture, boundary_position_correction) {
         0, rest_density, h, boundary_neighbors, positions, boundary_positions, boundary_psi,
         lambda_i, correction);
 
-    vec2f gradW = GradientKernel::deriv(positions[0] - boundary_positions[0], h);
+    vec2f gradW = kernel.deriv(positions[0] - boundary_positions[0]);
     vec2f gradC_j = -(boundary_psi[0] / rest_density) * gradW;
     vec2f expected_correction = -lambda_i * gradC_j;
 

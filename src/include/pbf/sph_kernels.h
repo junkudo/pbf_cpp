@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+#include <numbers>
 #include <vector>
 #include "pbf/vec.h"
 // SPH functions used in position based fluids code
@@ -9,16 +11,32 @@ namespace pbf::sph {
 
     template <>
     struct Poly6<2> {
-        static float eval(Vec<2> const & rVec, const float h);
-        static float evalAtZero(const float h);
-        static Vec<2> deriv(Vec<2> const & rVec, const float h);
+        explicit Poly6(float h);
+
+        float eval(Vec<2> const & rVec) const;
+        float evalAtZero() const;
+        Vec<2> deriv(Vec<2> const & rVec) const;
+
+    private:
+        float h_;
+        float h2_;
+        float coeff_;
+        float eval_at_zero_;
     };
 
     template <>
     struct Poly6<3> {
-        static float eval(Vec<3> const & rVec, const float h);
-        static float evalAtZero(const float h);
-        static Vec<3> deriv(Vec<3> const & rVec, const float h);
+        explicit Poly6(float h);
+
+        float eval(Vec<3> const & rVec) const;
+        float evalAtZero() const;
+        Vec<3> deriv(Vec<3> const & rVec) const;
+
+    private:
+        float h_;
+        float h2_;
+        float coeff_;
+        float eval_at_zero_;
     };
 
     template <int Dim>
@@ -26,16 +44,30 @@ namespace pbf::sph {
 
     template <>
     struct Spikey<2> {
-        static float eval(Vec<2> const & rVec, const float h);
-        static float evalAtZero(const float h);
-        static Vec<2> deriv(Vec<2> const & rVec, const float h);
+        explicit Spikey(float h);
+
+        float eval(Vec<2> const & rVec) const;
+        float evalAtZero() const;
+        Vec<2> deriv(Vec<2> const & rVec) const;
+
+    private:
+        float h_;
+        float coeff_;
+        float eval_at_zero_;
     };
 
     template <>
     struct Spikey<3> {
-        static float eval(Vec<3> const & rVec, const float h);
-        static float evalAtZero(const float h);
-        static Vec<3> deriv(Vec<3> const & rVec, const float h);
+        explicit Spikey(float h);
+
+        float eval(Vec<3> const & rVec) const;
+        float evalAtZero() const;
+        Vec<3> deriv(Vec<3> const & rVec) const;
+
+    private:
+        float h_;
+        float coeff_;
+        float eval_at_zero_;
     };
 
     // Cubic spline kernel with compact support (q <= 1).
@@ -45,17 +77,32 @@ namespace pbf::sph {
     template <>
     // 2D cubic spline kernel and gradient.
     struct CubicSpline<2> {
-        static float eval(Vec<2> const & rVec, const float h);
-        static float evalAtZero(const float h);
-        static Vec<2> deriv(Vec<2> const & rVec, const float h);
+        explicit CubicSpline(float h);
+
+        float eval(Vec<2> const & rVec) const;
+        float evalAtZero() const;
+        Vec<2> deriv(Vec<2> const & rVec) const;
+
+    private:
+        float h_;
+        float inv_h_;
+        float inv_h2_;
+        float k_;
     };
 
     template <>
     // 3D cubic spline kernel and gradient.
     struct CubicSpline<3> {
-        static float eval(Vec<3> const & rVec, const float h);
-        static float evalAtZero(const float h);
-        static Vec<3> deriv(Vec<3> const & rVec, const float h);
+        explicit CubicSpline(float h);
+
+        float eval(Vec<3> const & rVec) const;
+        float evalAtZero() const;
+        Vec<3> deriv(Vec<3> const & rVec) const;
+
+    private:
+        float h_;
+        float inv_h_;
+        float k_;
     };
 
     template <int Dim, typename Kernel>

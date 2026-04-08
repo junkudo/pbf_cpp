@@ -22,6 +22,7 @@ namespace pbf::sph {
             std::vector<int> const& neighbors,
             std::vector<Vec<Dim>> const& positions,
             std::vector<Vec<Dim>>& out_gradients) {
+                const Kernel kernel(h);
                 out_gradients.resize(neighbors.size() + 1);
 
                 // Initialize self-gradient to zero
@@ -39,7 +40,7 @@ namespace pbf::sph {
                     Vec<Dim> r_vec = pi - pj;
 
                     // Compute kernel derivative using template parameter
-                    Vec<Dim> gradW = Kernel::deriv(r_vec, h);
+                    Vec<Dim> gradW = kernel.deriv(r_vec);
 
                     // Neighbor gradient: -(m/ρ₀) * ∇W(rᵢ - rⱼ, h)
                     out_gradients[k + 1] = -(mass / rest_density) * gradW;
@@ -59,6 +60,7 @@ namespace pbf::sph {
             std::vector<Vec<Dim>> const& boundary_positions,
             std::vector<float> const& boundary_psi,
             std::vector<Vec<Dim>>& out_gradients) {
+                const GradientKernel kernel(h);
                 // Boundary analog of computeConstraintGradients.
                 out_gradients.resize(boundary_neighbors.size());
                 Vec<Dim> const& pi = positions[self_index];
@@ -66,7 +68,7 @@ namespace pbf::sph {
                 for (size_t k = 0; k < boundary_neighbors.size(); ++k) {
                     int boundary_index = boundary_neighbors[k];
                     Vec<Dim> const& pb = boundary_positions[boundary_index];
-                    Vec<Dim> gradW = GradientKernel::deriv(pi - pb, h);
+                    Vec<Dim> gradW = kernel.deriv(pi - pb);
                     Vec<Dim> gradC_j = -(boundary_psi[boundary_index] / rest_density) * gradW;
                     out_gradients[k] = gradC_j;
                 }
@@ -85,6 +87,7 @@ namespace pbf::sph {
         std::vector<Vec<Dim>> const& positions,
         std::vector<Vec<Dim>> const& boundary_positions,
         std::vector<float> const& boundary_psi) {
+            const GradientKernel gradient_kernel(h);
             // Combine fluid density and boundary density contributions.
             float density = computeDensity<Dim, ConstraintKernel>(
                 self_index, mass, h, neighbors, positions);
@@ -103,7 +106,7 @@ namespace pbf::sph {
             for (int neighbor_index : neighbors) {
                 const Vec<Dim>& pj = positions[neighbor_index];
                 const Vec<Dim> r_vec = pi - pj;
-                const Vec<Dim> gradW = GradientKernel::deriv(r_vec, h);
+                const Vec<Dim> gradW = gradient_kernel.deriv(r_vec);
                 const Vec<Dim> grad_j = -(mass_over_rest) * gradW;
                 grad_i_fluid -= grad_j;
                 fluid_sum_grad_sq += grad_j.dot(grad_j);
@@ -114,7 +117,7 @@ namespace pbf::sph {
             float boundary_sum_grad_sq = 0.0f;
             for (int boundary_index : boundary_neighbors) {
                 const Vec<Dim>& pb = boundary_positions[boundary_index];
-                const Vec<Dim> gradW = GradientKernel::deriv(pi - pb, h);
+                const Vec<Dim> gradW = gradient_kernel.deriv(pi - pb);
                 const Vec<Dim> gradC_j = -(boundary_psi[boundary_index] / rest_density) * gradW;
                 grad_i_boundary -= gradC_j;
                 boundary_sum_grad_sq += gradC_j.dot(gradC_j);
@@ -143,6 +146,7 @@ namespace pbf::sph {
         std::vector<float> const& lambdas,
         std::vector<Vec<Dim>> const& positions,
         Vec<Dim>& out_correction) {
+            const GradientKernel kernel(h);
             // Initialize correction to zero
             out_correction = Vec<Dim>::zero();
 
@@ -161,7 +165,7 @@ namespace pbf::sph {
                 Vec<Dim> r_vec = pi - pj;
 
                 // Compute kernel gradient using template parameter
-                Vec<Dim> gradW = GradientKernel::deriv(r_vec, h);
+                Vec<Dim> gradW = kernel.deriv(r_vec);
 
                 // Calculate position correction contribution:
                 // (m/ρ₀) * (λ_i + λ_j) * ∇W(r_i - r_j, h)
@@ -178,13 +182,14 @@ namespace pbf::sph {
         std::vector<Vec<Dim>> const& positions,
         std::vector<Vec<Dim>> const& boundary_positions,
         std::vector<float> const& boundary_psi) {
+            const Kernel kernel(h);
             // Sum psi * W for all boundary neighbors.
             float density = 0.0f;
             Vec<Dim> const& pi = positions[self_index];
 
             for (int boundary_index : boundary_neighbors) {
                 Vec<Dim> const& pb = boundary_positions[boundary_index];
-                const float w = Kernel::eval(pi - pb, h);
+                const float w = kernel.eval(pi - pb);
                 const float psi = boundary_psi[boundary_index];
                 density += psi * w;
             }
@@ -203,12 +208,13 @@ namespace pbf::sph {
         std::vector<float> const& boundary_psi,
         float lambda_i,
         Vec<Dim>& out_correction) {
+            const GradientKernel kernel(h);
             // FluidDemo-style boundary correction using only lambda_i.
             Vec<Dim> const& pi = positions[self_index];
 
             for (int boundary_index : boundary_neighbors) {
                 Vec<Dim> const& pb = boundary_positions[boundary_index];
-                Vec<Dim> gradW = GradientKernel::deriv(pi - pb, h);
+                Vec<Dim> gradW = kernel.deriv(pi - pb);
                 Vec<Dim> gradC_j = -(boundary_psi[boundary_index] / rest_density) * gradW;
                 out_correction -= lambda_i * gradC_j;
             }

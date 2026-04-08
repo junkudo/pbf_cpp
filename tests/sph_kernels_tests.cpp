@@ -17,6 +17,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     // We expect that the sph kernels integrate to 1 over
     // the circle with radius h
     float h = 3.2f;
+    SPHKernel kernel(h);
     float dr = 0.001f;
     float integral = 0.0f;
 
@@ -24,7 +25,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     pbf::vec2f unitVec = pbf::vec2f(1.0f, 0.0f);
     while (r <= h) {
 
-        float f = SPHKernel::eval(unitVec*r, h);
+        float f = kernel.eval(unitVec*r);
         integral += 2.0f * pi * r * dr * f;
         r += dr;
     }
@@ -48,13 +49,14 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     // We expect that the sph kernels integrate to 1 over
     // the sphere with radius h
     float h = 3.2f;
+    SPHKernel kernel(h);
     float dr = 0.001f;
     float integral = 0.0f;
 
     float r = 0.0f;
     pbf::vec3f unitVec = pbf::vec3f(1.0f, 0.0f, 0.0f);
     while (r <= h) {
-        float f = SPHKernel::eval(unitVec*r, h);
+        float f = kernel.eval(unitVec*r);
         integral += 4.0f * pi * r * r * dr * f;
         r += dr;
     }
@@ -74,11 +76,12 @@ template <int Dim, typename SPHKernel>
 void testSPHKernelConsistencyAtZero(std::string const & implName, float h) {
 SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     // We expect the sph kernels to evaluate consistently at zero
+    SPHKernel kernel(h);
     float r = 0.0f;
     auto unitVec = pbf::Vec<Dim>::zero();
     unitVec[0] = 1.0f;
-    float f = SPHKernel::eval(unitVec*r, h);
-    float fAtZero = SPHKernel::evalAtZero(h);
+    float f = kernel.eval(unitVec*r);
+    float fAtZero = kernel.evalAtZero();
     float tolerance = 1.0e-3f;
     EXPECT_NEAR(f, fAtZero, tolerance);
 }
@@ -87,8 +90,9 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
 TEST(sph_kernels, poly6_at_zero)
 {
     float h = 3.2f;
+    pbf::sph::Poly6<2> kernel(h);
     testSPHKernelConsistencyAtZero<2, pbf::sph::Poly6<2>>("Poly6", h);
-    float fAtZero = pbf::sph::Poly6<2>::evalAtZero(h);
+    float fAtZero = kernel.evalAtZero();
     float tolerance = 1.0e-3f;
     float f =  4.0f / (std::numbers::pi_v<float> * std::pow(h, 8)) * std::pow(h, 6);
     EXPECT_NEAR(f, fAtZero, tolerance);
@@ -97,8 +101,9 @@ TEST(sph_kernels, poly6_at_zero)
 TEST(sph_kernels, spikey_at_zero)
 {
     float h = 3.2f;
+    pbf::sph::Spikey<2> kernel(h);
     testSPHKernelConsistencyAtZero<2, pbf::sph::Spikey<2>>("Spikey", h);
-    float fAtZero = pbf::sph::Spikey<2>::evalAtZero(h);
+    float fAtZero = kernel.evalAtZero();
     float tolerance = 1.0e-3f;
     float f =  10.0f / (std::numbers::pi_v<float> * std::pow(h, 5)) * std::pow(h, 3);
     EXPECT_NEAR(f, fAtZero, tolerance);
@@ -107,8 +112,9 @@ TEST(sph_kernels, spikey_at_zero)
 TEST(sph_kernels, cubic_spline_at_zero)
 {
     float h = 3.2f;
+    pbf::sph::CubicSpline<2> kernel(h);
     testSPHKernelConsistencyAtZero<2, pbf::sph::CubicSpline<2>>("CubicSpline", h);
-    float fAtZero = pbf::sph::CubicSpline<2>::evalAtZero(h);
+    float fAtZero = kernel.evalAtZero();
     float tolerance = 1.0e-3f;
     float f = 40.0f / (7.0f * std::numbers::pi_v<float> * std::pow(h, 2));
     EXPECT_NEAR(f, fAtZero, tolerance);
@@ -117,8 +123,9 @@ TEST(sph_kernels, cubic_spline_at_zero)
 TEST(sph_kernels, poly6_at_zero_3d)
 {
     float h = 3.2f;
+    pbf::sph::Poly6<3> kernel(h);
     testSPHKernelConsistencyAtZero<3, pbf::sph::Poly6<3>>("Poly6", h);
-    float fAtZero = pbf::sph::Poly6<3>::evalAtZero(h);
+    float fAtZero = kernel.evalAtZero();
     float tolerance = 1.0e-3f;
     float f =  315.0f / (64.0f * std::numbers::pi_v<float> * std::pow(h, 9)) * std::pow(h, 6);
     EXPECT_NEAR(f, fAtZero, tolerance);
@@ -127,8 +134,9 @@ TEST(sph_kernels, poly6_at_zero_3d)
 TEST(sph_kernels, spikey_at_zero_3d)
 {
     float h = 3.2f;
+    pbf::sph::Spikey<3> kernel(h);
     testSPHKernelConsistencyAtZero<3, pbf::sph::Spikey<3>>("Spikey", h);
-    float fAtZero = pbf::sph::Spikey<3>::evalAtZero(h);
+    float fAtZero = kernel.evalAtZero();
     float tolerance = 1.0e-3f;
     float f =  15.0f / (std::numbers::pi_v<float> * std::pow(h, 6)) * std::pow(h, 3);
     EXPECT_NEAR(f, fAtZero, tolerance);
@@ -137,8 +145,9 @@ TEST(sph_kernels, spikey_at_zero_3d)
 TEST(sph_kernels, cubic_spline_at_zero_3d)
 {
     float h = 3.2f;
+    pbf::sph::CubicSpline<3> kernel(h);
     testSPHKernelConsistencyAtZero<3, pbf::sph::CubicSpline<3>>("CubicSpline", h);
-    float fAtZero = pbf::sph::CubicSpline<3>::evalAtZero(h);
+    float fAtZero = kernel.evalAtZero();
     float tolerance = 1.0e-3f;
     float f = 8.0f / (std::numbers::pi_v<float> * std::pow(h, 3));
     EXPECT_NEAR(f, fAtZero, tolerance);
@@ -150,6 +159,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     // We expect the gradients of the kernels to be consistent
     // with the function evaluation
     float h = 3.2f;
+    SPHKernel kernel(h);
     float dr = 0.001f;
 
     // --------------------------
@@ -161,17 +171,17 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     {
         float r = dist(testing::rng);
         pbf::vec2f rvec = r*unitVec;
-        pbf::vec2f dfdr = SPHKernel::deriv(rvec, h);
+        pbf::vec2f dfdr = kernel.deriv(rvec);
         float eps = 1.0e-3f;
 
         for (int dim = 0; dim < 2; ++dim) {
             pbf::vec2f rvec_plus = rvec;
             rvec_plus[dim] += eps;
-            float fplus = SPHKernel::eval(rvec_plus, h);
+            float fplus = kernel.eval(rvec_plus);
 
             pbf::vec2f rvec_minus = rvec;
             rvec_minus[dim] -= eps;
-            float fminus = SPHKernel::eval(rvec_minus, h);
+            float fminus = kernel.eval(rvec_minus);
 
             float dfdx = (fplus - fminus) / (2.0f * eps);
             float tolerance = 1.0e-4f;
@@ -184,7 +194,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     { // Testing at r = 0.0
         float r = 0.0f;
         pbf::vec2f rvec = r*unitVec;
-        pbf::vec2f dfdr = SPHKernel::deriv(rvec, h);
+        pbf::vec2f dfdr = kernel.deriv(rvec);
         float tolerance = 1.0e-4f;
         for (int dim = 0; dim < 2; ++dim) {
             EXPECT_NEAR(0.0f, dfdr[dim], tolerance);
@@ -194,7 +204,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     { // Testing at r = h
         float r = h;
         pbf::vec2f rvec = r*unitVec;
-        pbf::vec2f dfdr = SPHKernel::deriv(rvec, h);
+        pbf::vec2f dfdr = kernel.deriv(rvec);
         float tolerance = 1.0e-4f;
         for (int dim = 0; dim < 2; ++dim) {
             EXPECT_NEAR(0.0f, dfdr[dim], tolerance);
@@ -214,6 +224,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     // We expect the gradients of the kernels to be consistent
     // with the function evaluation
     float h = 3.2f;
+    SPHKernel kernel(h);
 
     // --------------------------
     // Test a random inner point
@@ -224,17 +235,17 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     {
         float r = dist(testing::rng);
         pbf::vec3f rvec = r*unitVec;
-        pbf::vec3f dfdr = SPHKernel::deriv(rvec, h);
+        pbf::vec3f dfdr = kernel.deriv(rvec);
         float eps = 1.0e-3f;
 
         for (int dim = 0; dim < 3; ++dim) {
             pbf::vec3f rvec_plus = rvec;
             rvec_plus[dim] += eps;
-            float fplus = SPHKernel::eval(rvec_plus, h);
+            float fplus = kernel.eval(rvec_plus);
 
             pbf::vec3f rvec_minus = rvec;
             rvec_minus[dim] -= eps;
-            float fminus = SPHKernel::eval(rvec_minus, h);
+            float fminus = kernel.eval(rvec_minus);
 
             float dfdx = (fplus - fminus) / (2.0f * eps);
             float tolerance = 1.0e-4f;
@@ -247,7 +258,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     { // Testing at r = 0.0
         float r = 0.0f;
         pbf::vec3f rvec = r*unitVec;
-        pbf::vec3f dfdr = SPHKernel::deriv(rvec, h);
+        pbf::vec3f dfdr = kernel.deriv(rvec);
         float tolerance = 1.0e-4f;
         for (int dim = 0; dim < 3; ++dim) {
             EXPECT_NEAR(0.0f, dfdr[dim], tolerance);
@@ -257,7 +268,7 @@ SCOPED_TRACE(testing::Message() << "Implementation: " << implName);
     { // Testing at r = h
         float r = h;
         pbf::vec3f rvec = r*unitVec;
-        pbf::vec3f dfdr = SPHKernel::deriv(rvec, h);
+        pbf::vec3f dfdr = kernel.deriv(rvec);
         float tolerance = 1.0e-4f;
         for (int dim = 0; dim < 3; ++dim) {
             EXPECT_NEAR(0.0f, dfdr[dim], tolerance);
@@ -281,11 +292,12 @@ TEST_F(DensityGridFixture, density_one_particle) {
     positions.push_back({uni(testing::rng), uni(testing::rng)});
     std::vector<int> neighbors; // empty neighbors
     float tol = 1.0e-4f;
+    Kernel kernel(h);
     float density0 = pbf::sph::computeDensity<2, Kernel>(0, mass, h, neighbors, positions);
-    EXPECT_NEAR(density0, mass * Kernel::evalAtZero(h), tol);
+    EXPECT_NEAR(density0, mass * kernel.evalAtZero(), tol);
 
     float density1 = pbf::sph::computeDensity<2, Kernel>(0, mass * 2.0f, h, neighbors, positions);
-    EXPECT_NEAR(density1, 2.0f * mass * Kernel::evalAtZero(h), tol);
+    EXPECT_NEAR(density1, 2.0f * mass * kernel.evalAtZero(), tol);
 }
 
 TEST_F(DensityGridFixture, density_two_colocated_particles) {
@@ -297,10 +309,11 @@ TEST_F(DensityGridFixture, density_two_colocated_particles) {
     positions.push_back(positions[0]);
 
     std::vector<int> neighbors {1};
+    Kernel kernel(h);
 
     float density = pbf::sph::computeDensity<2, Kernel>(0, mass, h, neighbors, positions);
     float tol = 1.0e-4f;
-    EXPECT_NEAR(density, 2.0f * mass * Kernel::evalAtZero(h), tol);
+    EXPECT_NEAR(density, 2.0f * mass * kernel.evalAtZero(), tol);
 }
 
 TEST_F(DensityGridFixture, density_three_particles) {
@@ -318,9 +331,10 @@ TEST_F(DensityGridFixture, density_three_particles) {
     positions.push_back(positions[0] + direction * r0);
     positions.push_back(positions[0] + direction * r1);
     std::vector<int> neighbors{1,2};
+    Kernel kernel(h);
 
     float density = pbf::sph::computeDensity<2, Kernel>(0, mass, h, neighbors, positions);
-    float expectedDensity = mass * (Kernel::evalAtZero(h) + Kernel::eval(direction * r0, h) + Kernel::eval(direction * r1, h));
+    float expectedDensity = mass * (kernel.evalAtZero() + kernel.eval(direction * r0) + kernel.eval(direction * r1));
     float tol = 1.0e-4f;
     EXPECT_NEAR(density, expectedDensity, tol);
 }
@@ -383,11 +397,12 @@ TEST_F(DensityGridFixture3D, density_one_particle_3d) {
     positions.push_back({uni(testing::rng), uni(testing::rng), uni(testing::rng)});
     std::vector<int> neighbors; // empty neighbors
     float tol = 1.0e-4f;
+    Kernel kernel(h);
     float density0 = pbf::sph::computeDensity<3, Kernel>(0, mass, h, neighbors, positions);
-    EXPECT_NEAR(density0, mass * Kernel::evalAtZero(h), tol);
+    EXPECT_NEAR(density0, mass * kernel.evalAtZero(), tol);
 
     float density1 = pbf::sph::computeDensity<3, Kernel>(0, mass * 2.0f, h, neighbors, positions);
-    EXPECT_NEAR(density1, 2.0f * mass * Kernel::evalAtZero(h), tol);
+    EXPECT_NEAR(density1, 2.0f * mass * kernel.evalAtZero(), tol);
 }
 
 TEST_F(DensityGridFixture3D, density_two_colocated_particles_3d) {
@@ -399,10 +414,11 @@ TEST_F(DensityGridFixture3D, density_two_colocated_particles_3d) {
     positions.push_back(positions[0]);
 
     std::vector<int> neighbors {1};
+    Kernel kernel(h);
 
     float density = pbf::sph::computeDensity<3, Kernel>(0, mass, h, neighbors, positions);
     float tol = 1.0e-4f;
-    EXPECT_NEAR(density, 2.0f * mass * Kernel::evalAtZero(h), tol);
+    EXPECT_NEAR(density, 2.0f * mass * kernel.evalAtZero(), tol);
 }
 
 TEST_F(DensityGridFixture3D, density_three_particles_3d) {
@@ -420,9 +436,10 @@ TEST_F(DensityGridFixture3D, density_three_particles_3d) {
     positions.push_back(positions[0] + direction * r0);
     positions.push_back(positions[0] + direction * r1);
     std::vector<int> neighbors{1,2};
+    Kernel kernel(h);
 
     float density = pbf::sph::computeDensity<3, Kernel>(0, mass, h, neighbors, positions);
-    float expectedDensity = mass * (Kernel::evalAtZero(h) + Kernel::eval(direction * r0, h) + Kernel::eval(direction * r1, h));
+    float expectedDensity = mass * (kernel.evalAtZero() + kernel.eval(direction * r0) + kernel.eval(direction * r1));
     float tol = 1.0e-4f;
     EXPECT_NEAR(density, expectedDensity, tol);
 }
@@ -480,6 +497,7 @@ TEST(sph_kernels, xsph_viscosity_smooths_velocity) {
     const float h = 1.0f;
     const float mass = 2.0f;
     const float viscosity = 0.02f;
+    Kernel kernel(h);
 
     std::vector<pbf::vec2f> positions{
         pbf::vec2f(0.0f, 0.0f),
@@ -493,7 +511,7 @@ TEST(sph_kernels, xsph_viscosity_smooths_velocity) {
 
     const float density0 = pbf::sph::computeDensity<2, Kernel>(0, mass, h, neighbors[0], positions);
     const float density1 = pbf::sph::computeDensity<2, Kernel>(1, mass, h, neighbors[1], positions);
-    const float weight = Kernel::eval(positions[0] - positions[1], h);
+    const float weight = kernel.eval(positions[0] - positions[1]);
     const pbf::vec2f delta0 = -(velocities[0] - velocities[1]) * (mass / density1) * weight;
     const pbf::vec2f delta1 = -(velocities[1] - velocities[0]) * (mass / density0) * weight;
     const pbf::vec2f expected0 = velocities[0] + viscosity * delta0;
@@ -543,6 +561,7 @@ TEST(sph_kernels, boundary_psi_matches_manual_sum) {
     const float h = 1.0f;
     const float rest_density = 1000.0f;
     const float pressure_scale = 1.2f;
+    Kernel kernel(h);
 
     std::vector<pbf::vec2f> boundary_positions{
         pbf::vec2f(0.0f, 0.0f),
@@ -553,8 +572,8 @@ TEST(sph_kernels, boundary_psi_matches_manual_sum) {
     const float psi = pbf::sph::computeBoundaryPsi<2, Kernel>(
         0, h, rest_density, pressure_scale, boundary_neighbors, boundary_positions);
 
-    const float delta = Kernel::evalAtZero(h)
-                        + Kernel::eval(boundary_positions[0] - boundary_positions[1], h);
+    const float delta = kernel.evalAtZero()
+                        + kernel.eval(boundary_positions[0] - boundary_positions[1]);
     const float expected = pressure_scale * rest_density * (1.0f / delta);
     const float tol = 1.0e-5f;
     EXPECT_NEAR(psi, expected, tol);

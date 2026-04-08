@@ -103,43 +103,67 @@ namespace pbf::sph {
         std::vector<Vec<Dim>> const& positions,
         std::vector<Vec<Dim>> const& boundary_positions,
         std::vector<float> const& boundary_psi) {
+            const ConstraintKernel constraint_kernel(h);
             const GradientKernel gradient_kernel(h);
             const float h2 = h * h;
-            // Combine fluid density and boundary density contributions.
-            float density = computeDensity<Dim, ConstraintKernel>(
-                self_index, mass, h, neighbors, positions);
-            density += computeConstraintBoundary<Dim, ConstraintKernel>(
-                self_index, h, boundary_neighbors, positions, boundary_positions, boundary_psi);
-            float constraint = density / rest_density - 1.0f;
-
-            // Clamp negative density constraints to zero to match FluidDemo and avoid surface clumping.
-            constraint = std::max(constraint, 0.0f);
-
             const float mass_over_rest = mass / rest_density;
             const Vec<Dim>& pi = positions[self_index];
+
+            // Fused fluid pass: density + gradient denominator terms.
+            float density = mass * constraint_kernel.evalAtZero();
 
             Vec<Dim> grad_i_fluid = Vec<Dim>::zero();
             float fluid_sum_grad_sq = 0.0f;
             for (int neighbor_index : neighbors) {
                 const Vec<Dim>& pj = positions[neighbor_index];
                 const Vec<Dim> r_vec = pi - pj;
-                const Vec<Dim> gradW = detail::computeKernelGradient<Dim>(gradient_kernel, r_vec, h2);
+                const float r2 = r_vec.dot(r_vec);
+                if (r2 > h2) {
+                    continue;
+                }
+
+                const float r = std::sqrt(r2);
+                density += mass * constraint_kernel.eval(r);
+
+                Vec<Dim> gradW = Vec<Dim>::zero();
+                if (r2 > 1.0e-12f) {
+                    const float dWdr = gradient_kernel.dWdr(r);
+                    gradW = r_vec * (dWdr / r);
+                }
                 const Vec<Dim> grad_j = -(mass_over_rest) * gradW;
                 grad_i_fluid -= grad_j;
                 fluid_sum_grad_sq += grad_j.dot(grad_j);
             }
             fluid_sum_grad_sq += grad_i_fluid.dot(grad_i_fluid);
 
+            // Fused boundary pass: boundary density + gradient denominator terms.
             Vec<Dim> grad_i_boundary = Vec<Dim>::zero();
             float boundary_sum_grad_sq = 0.0f;
             for (int boundary_index : boundary_neighbors) {
                 const Vec<Dim>& pb = boundary_positions[boundary_index];
-                const Vec<Dim> gradW = detail::computeKernelGradient<Dim>(gradient_kernel, pi - pb, h2);
+                const Vec<Dim> r_vec = pi - pb;
+                const float r2 = r_vec.dot(r_vec);
+                if (r2 > h2) {
+                    continue;
+                }
+
+                const float r = std::sqrt(r2);
+                density += boundary_psi[boundary_index] * constraint_kernel.eval(r);
+
+                Vec<Dim> gradW = Vec<Dim>::zero();
+                if (r2 > 1.0e-12f) {
+                    const float dWdr = gradient_kernel.dWdr(r);
+                    gradW = r_vec * (dWdr / r);
+                }
                 const Vec<Dim> gradC_j = -(boundary_psi[boundary_index] / rest_density) * gradW;
                 grad_i_boundary -= gradC_j;
                 boundary_sum_grad_sq += gradC_j.dot(gradC_j);
             }
             boundary_sum_grad_sq += grad_i_boundary.dot(grad_i_boundary);
+
+            float constraint = density / rest_density - 1.0f;
+            // Clamp negative density constraints to zero to match FluidDemo and avoid surface clumping.
+            constraint = std::max(constraint, 0.0f);
 
             const float grad_i_fluid_sq = grad_i_fluid.dot(grad_i_fluid);
             const float boundary_grad_i_sq = grad_i_boundary.dot(grad_i_boundary);

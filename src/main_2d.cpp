@@ -36,6 +36,7 @@ constexpr int kTargetFps = 60; // Target frame rate.
 constexpr int kParticleCountX = 20; // Particles per row.
 constexpr int kParticleCountY = 20; // Particles per column.
 constexpr int kSolverIterations = 15; // Solver iterations per step.
+constexpr float kBenchmarkSimulationTimeSeconds = 10.0f; // Stop after fixed simulated time.
 
 // Overlay layout constants.
 constexpr int kOverlayX = 10;
@@ -385,7 +386,7 @@ int main() {
 
     // Initialize raylib
     InitWindow(app_config.visualization.screenWidth, app_config.visualization.screenHeight, "PBF Fluid Simulation");
-    SetTargetFPS(kTargetFps);
+    //SetTargetFPS(kTargetFps);
 
     const std::array<int, 2> particle_counts{kParticleCountX, kParticleCountY};
     const float grid_width = static_cast<float>(particle_counts[0] - 1)
@@ -413,6 +414,9 @@ int main() {
                      boundary_hash);
 
     float simulationTime = 0.0f;  // Add time tracking
+    const int max_sim_steps = static_cast<int>(std::lround(
+        kBenchmarkSimulationTimeSeconds / app_config.physics.timeStep));
+    int sim_steps_completed = 0;
 
     // Simple simulation + display loop
     std::vector<vec2f> predicted_positions(system.getNumParticles(), vec2f::zero());
@@ -423,16 +427,18 @@ int main() {
     std::vector<float> lambdas(system.getNumParticles(), 0.0f);
     std::vector<int> boundary_candidates;
     StepTimings timings;
-    while (!WindowShouldClose()) {
+    while (!WindowShouldClose() && sim_steps_completed < max_sim_steps) {
         resetTimings(timings);
-        for (int sim_step = 0; sim_step < 4; ++sim_step) {
+        for (int sim_step = 0; sim_step < 1 && sim_steps_completed < max_sim_steps; ++sim_step) {
             runSimulationStep(system, spatial_hash, boundary_hash,
                               boundary_positions, boundary_psi,
                               app_config.solver, predicted_positions,
                               neighbors, boundary_neighbors_buffer,
                               total_corrections, corrections,
-                              lambdas, boundary_candidates, timings);
+                              lambdas, boundary_candidates,
+                              timings);
             simulationTime += app_config.physics.timeStep;
+            ++sim_steps_completed;
         }
         renderFrame(app_config,
                     min_bounds,

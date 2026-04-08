@@ -11,7 +11,7 @@ struct PhysicsConfig {
     float particleSpacing = 0.01f;
     float kernelRadius = 0.0f;  // Will be calculated as 2.5f * particleSpacing
     float restDensity = 1.0f;
-    float gravity = 9.8f;
+    float gravity = 1.0f;
     float timeStep = 1.0f / 240.0f;
     float mass = 0.0f;  // Will be calculated as restDensity * particleSpacing * particleSpacing
     float viscosity = 0.02f;

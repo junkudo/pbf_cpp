@@ -29,7 +29,7 @@ target_link_libraries(pbf_app_2d
     PRIVATE raylib
 )
 
-find_package(OpenMP)
-if (OpenMP_CXX_FOUND)
-    target_link_libraries(pbf_app_2d PRIVATE OpenMP::OpenMP_CXX)
-endif()
+# find_package(OpenMP)
+# if (OpenMP_CXX_FOUND)
+#     target_link_libraries(pbf_app_2d PRIVATE OpenMP::OpenMP_CXX)
+# endif()

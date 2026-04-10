@@ -8,8 +8,8 @@ add_library(pbf STATIC
 target_include_directories(pbf
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../external/raylib/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/../external/raylib/examples/shaders
+        ${raylib_SOURCE_DIR}/src
+        ${raylib_SOURCE_DIR}/examples/shaders
 )
 
 # Warnings
